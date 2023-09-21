@@ -14,6 +14,7 @@ typedef struct __packed__
     uint16_t destAddr;
 } blocks_t;
 
+#define VERSION "v0.5"
 #define MAX_OFFSET_ZX0 32640
 #define MAX_OFFSET_ZX7 2176
 #define MAX_INPUT 0x10000
@@ -105,7 +106,7 @@ unsigned char* addBank(char *fileName, int *inputSize, int *outputSize, int *del
     *inputSize = fread(inputData, 1, MAX_INPUT, inFile);
     fclose(inFile);
 
-    printf("Compressing %s ", fileName);
+    printf("Compressing %s\n", fileName);
 
     // Compress data
     outputData = doCompression(inputData, *inputSize, outputSize, delta, quick, backwards);
@@ -132,12 +133,16 @@ int main(int argc, char **argv)
     int outputSize[MAX_BLOCKS] =
     { 0 };
     int delta;
+    int maxDelta = 0;
     unsigned char *outputData[MAX_BLOCKS] =
     { 0 };
     uint16_t *shortPtr;
 
     if (argc < 7)
         usage();
+
+    printf("ZX Spectrum Compressed Tape Loader (ZXCTL)\n");
+    printf("Version %s, (C) 2023 IrataHack, All Rights Reserved.\n\n", VERSION);
 
     for (int arg = 1; arg < argc; arg++)
     {
@@ -289,6 +294,7 @@ int main(int argc, char **argv)
         blocks[0].loadSize = bswap_16(htons(outputSize[0]));
         blocks[0].loadAddr = bswap_16(htons(0xc000));
         blocks[0].destAddr = bswap_16(htons(0x4000));
+        maxDelta = delta > maxDelta ? delta : maxDelta;
     }
 
     // Setup the main bank
@@ -296,6 +302,7 @@ int main(int argc, char **argv)
     blocks[1].loadSize = bswap_16(htons(outputSize[1]));
     blocks[1].loadAddr = bswap_16(htons(loadAddress - delta));
     blocks[1].destAddr = bswap_16(htons(loadAddress + inputSize - 1));
+    maxDelta = delta > maxDelta ? delta : maxDelta;
 
     for (int n = 2; n < MAX_BLOCKS; n++)
     {
@@ -305,6 +312,7 @@ int main(int argc, char **argv)
             blocks[n].loadSize = bswap_16(htons(outputSize[n]));
             blocks[n].loadAddr = bswap_16(htons(0xc000 - delta));
             blocks[n].destAddr = bswap_16(htons(0xc000 + inputSize - 1));
+            maxDelta = delta > maxDelta ? delta : maxDelta;
         }
     }
 
@@ -339,5 +347,8 @@ int main(int argc, char **argv)
             free(outputData[n]);
         }
     }
+
+    printf("** Max delta across all blocks: %d bytes **\n", maxDelta);
+
     return (0);
 }

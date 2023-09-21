@@ -10,7 +10,7 @@ all: $(PROJECT_NAME)
 clean:
 	rm -f $(PROJECT_NAME)
 	rm -f *.tap *.bin *.[od]
-	rm -f loader.h *.patch *.zx0
+	rm -f loader.h *.patch *.zx0 *.map
 
 %.o: %.c loader.h
 	c++ $(CFLAGS) -c -MMD $< -o $@
