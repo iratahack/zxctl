@@ -24,6 +24,7 @@ extern void bin2rem(unsigned char *loader, int size, char *fileName, char *tapeN
 extern void appendTap(unsigned char *outputData, int outputSize, char *fileName);
 
 static int debug = 0;
+static int info = 0;
 static char mainBank[MAX_FILENAME] =
 { 0 };
 static char outputFile[MAX_FILENAME] =
@@ -44,10 +45,11 @@ void usage(void)
     fprintf(stderr, "\t-d,--debug           Enable debug logging\n");
     fprintf(stderr, "\t-o,--output <file>   Output file name (.tap), defaults <mainbank>.tap\n");
     fprintf(stderr, "\t-s,--screen <file>   Name of the SCREEN$ (.scr) file\n");
-    fprintf(stderr, "\t-t,--tape <file>     Name of the basic loader, defaults to 'Loader'\n");
+    fprintf(stderr, "\t-t,--tape <file>     Name of the basic loader, defaults to 'Loader    '\n");
     fprintf(stderr, "\t-q,--quick           Enable quick compress mode for ZX0\n");
     fprintf(stderr, "\t-[1,3,4,6,7] <file>  Optional 128K banks to include\n");
     fprintf(stderr, "\t                       (Only loaded on 128K systems)\n");
+    fprintf(stderr, "\t-i,--info            Display compression info\n");
     fprintf(stderr, "\n");
 
     exit(1);
@@ -107,7 +109,7 @@ unsigned char* addBank(char *fileName, int *inputSize, int *outputSize, int *del
 
     // Compress data
     outputData = doCompression(inputData, *inputSize, outputSize, delta, quick, backwards);
-    if (debug)
+    if (info)
     {
         printf("Input size        : %d (0x%04x)\n", *inputSize, *inputSize);
         printf("Output size       : %d (0x%04x)\n", *outputSize, *outputSize);
@@ -141,7 +143,11 @@ int main(int argc, char **argv)
     {
         if ((strcmp(argv[arg], "--debug") == 0) || strcmp(argv[arg], "-d") == 0)
         {
-            debug = 1;
+            info = debug = 1;
+        }
+        else if ((strcmp(argv[arg], "--info") == 0) || strcmp(argv[arg], "-i") == 0)
+        {
+            info = 1;
         }
         else if ((strcmp(argv[arg], "--load") == 0) || (strcmp(argv[arg], "-l") == 0))
         {
