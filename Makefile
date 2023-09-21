@@ -1,5 +1,5 @@
 PROJECT_NAME=zxctl
-CFLAGS:=-Wall
+CFLAGS:=-Wall -O2
 CSRC:=zxctl.c compress.c memory.c optimize.c
 COBJS:=$(CSRC:.c=.o)
 CXXSRC:=bin2rem.cpp
@@ -22,7 +22,7 @@ $(PROJECT_NAME): $(COBJS) $(CXXOBJS)
 	c++  $^ -O2 -o $@
 
 loader.bin: loader.asm
-	z88dk-z80asm -mz80 -b -o$@ $<
+	z88dk-z80asm -mz80 -m -b -o$@ $<
 
 loader.h: loader.bin
 	xxd -i $< > $@

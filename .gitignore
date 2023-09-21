@@ -1,4 +1,10 @@
 *.o
 *.d
 *.bin
+*.tap
+*.bak
+*.map
+loader.h
+loader.patch
+*.zx0
 zxctl
