@@ -30,23 +30,26 @@
 
 #define MAX_SCALE 50
 
-int offset_ceiling(int index, int offset_limit) {
+int offset_ceiling(int index, int offset_limit)
+{
     return index > offset_limit ? offset_limit : index < INITIAL_OFFSET ? INITIAL_OFFSET : index;
 }
 
-int elias_gamma_bits(int value) {
+int elias_gamma_bits(int value)
+{
     int bits = 1;
     while (value >>= 1)
         bits += 2;
     return bits;
 }
 
-BLOCK* optimize(unsigned char *input_data, int input_size, int skip, int offset_limit, void **blockStart) {
+BLOCK* optimize(unsigned char *input_data, int input_size, int skip, int offset_limit, void **blockStart)
+{
     BLOCK **last_literal;
     BLOCK **last_match;
     BLOCK **optimal;
-    int* match_length;
-    int* best_length;
+    int *match_length;
+    int *best_length;
     int best_length_size;
     int bits;
     int index;
@@ -54,15 +57,16 @@ BLOCK* optimize(unsigned char *input_data, int input_size, int skip, int offset_
     int length;
     int bits2;
     int dots = 2;
-    int max_offset = offset_ceiling(input_size-1, offset_limit);
+    int max_offset = offset_ceiling(input_size - 1, offset_limit);
 
     /* allocate all main data structures at once */
-    last_literal = (BLOCK **)calloc(max_offset+1, sizeof(BLOCK *));
-    last_match = (BLOCK **)calloc(max_offset+1, sizeof(BLOCK *));
-    *blockStart = optimal = (BLOCK **)calloc(input_size, sizeof(BLOCK *));
-    match_length = (int *)calloc(max_offset+1, sizeof(int));
-    best_length = (int *)malloc(input_size*sizeof(int));
-    if (!last_literal || !last_match || !optimal || !match_length || !best_length) {
+    last_literal = (BLOCK**) calloc(max_offset + 1, sizeof(BLOCK*));
+    last_match = (BLOCK**) calloc(max_offset + 1, sizeof(BLOCK*));
+    *blockStart = optimal = (BLOCK**) calloc(input_size, sizeof(BLOCK*));
+    match_length = (int*) calloc(max_offset + 1, sizeof(int));
+    best_length = (int*) malloc(input_size * sizeof(int));
+    if (!last_literal || !last_match || !optimal || !match_length || !best_length)
+    {
         fprintf(stderr, "Error: Insufficient memory\n");
         exit(1);
     }
@@ -70,53 +74,69 @@ BLOCK* optimize(unsigned char *input_data, int input_size, int skip, int offset_
         best_length[2] = 2;
 
     /* start with fake block */
-    assign(&last_match[INITIAL_OFFSET], allocate(-1, skip-1, INITIAL_OFFSET, NULL));
+    assign(&last_match[INITIAL_OFFSET], allocate(-1, skip - 1, INITIAL_OFFSET, NULL));
 
-    fprintf(stderr, "[");
+    printf("[");
 
     /* process remaining bytes */
-    for (index = skip; index < input_size; index++) {
+    for (index = skip; index < input_size; index++)
+    {
         best_length_size = 2;
         max_offset = offset_ceiling(index, offset_limit);
-        for (offset = 1; offset <= max_offset; offset++) {
-            if (index != skip && index >= offset && input_data[index] == input_data[index-offset]) {
+        for (offset = 1; offset <= max_offset; offset++)
+        {
+            if (index != skip && index >= offset && input_data[index] == input_data[index - offset])
+            {
                 /* copy from last offset */
-                if (last_literal[offset]) {
-                    length = index-last_literal[offset]->index;
+                if (last_literal[offset])
+                {
+                    length = index - last_literal[offset]->index;
                     bits = last_literal[offset]->bits + 1 + elias_gamma_bits(length);
                     assign(&last_match[offset], allocate(bits, index, offset, last_literal[offset]));
                     if (!optimal[index] || optimal[index]->bits > bits)
                         assign(&optimal[index], last_match[offset]);
                 }
                 /* copy from new offset */
-                if (++match_length[offset] > 1) {
-                    if (best_length_size < match_length[offset]) {
-                        bits = optimal[index-best_length[best_length_size]]->bits + elias_gamma_bits(best_length[best_length_size]-1);
-                        do {
+                if (++match_length[offset] > 1)
+                {
+                    if (best_length_size < match_length[offset])
+                    {
+                        bits = optimal[index - best_length[best_length_size]]->bits
+                                + elias_gamma_bits(best_length[best_length_size] - 1);
+                        do
+                        {
                             best_length_size++;
-                            bits2 = optimal[index-best_length_size]->bits + elias_gamma_bits(best_length_size-1);
-                            if (bits2 <= bits) {
+                            bits2 = optimal[index - best_length_size]->bits + elias_gamma_bits(best_length_size - 1);
+                            if (bits2 <= bits)
+                            {
                                 best_length[best_length_size] = best_length_size;
                                 bits = bits2;
-                            } else {
-                                best_length[best_length_size] = best_length[best_length_size-1];
                             }
-                        } while(best_length_size < match_length[offset]);
+                            else
+                            {
+                                best_length[best_length_size] = best_length[best_length_size - 1];
+                            }
+                        } while (best_length_size < match_length[offset]);
                     }
                     length = best_length[match_length[offset]];
-                    bits = optimal[index-length]->bits + 8 + elias_gamma_bits((offset-1)/128+1) + elias_gamma_bits(length-1);
-                    if (!last_match[offset] || last_match[offset]->index != index || last_match[offset]->bits > bits) {
-                        assign(&last_match[offset], allocate(bits, index, offset, optimal[index-length]));
+                    bits = optimal[index - length]->bits + 8 + elias_gamma_bits((offset - 1) / 128 + 1)
+                            + elias_gamma_bits(length - 1);
+                    if (!last_match[offset] || last_match[offset]->index != index || last_match[offset]->bits > bits)
+                    {
+                        assign(&last_match[offset], allocate(bits, index, offset, optimal[index - length]));
                         if (!optimal[index] || optimal[index]->bits > bits)
                             assign(&optimal[index], last_match[offset]);
                     }
                 }
-            } else {
+            }
+            else
+            {
                 /* copy literals */
                 match_length[offset] = 0;
-                if (last_match[offset]) {
-                    length = index-last_match[offset]->index;
-                    bits = last_match[offset]->bits + 1 + elias_gamma_bits(length) + length*8;
+                if (last_match[offset])
+                {
+                    length = index - last_match[offset]->index;
+                    bits = last_match[offset]->bits + 1 + elias_gamma_bits(length) + length * 8;
                     assign(&last_literal[offset], allocate(bits, index, 0, last_match[offset]));
                     if (!optimal[index] || optimal[index]->bits > bits)
                         assign(&optimal[index], last_literal[offset]);
@@ -125,19 +145,20 @@ BLOCK* optimize(unsigned char *input_data, int input_size, int skip, int offset_
         }
 
         /* indicate progress */
-        if (index*MAX_SCALE/input_size > dots) {
-            fprintf(stderr, ".");
-            fflush(stderr);
+        if (index * MAX_SCALE / input_size > dots)
+        {
+            printf(".");
+            fflush(stdout);
             dots++;
         }
     }
 
-    fprintf(stderr, "]\n");
+    printf("]\n");
 
     free(last_literal);
     free(last_match);
 //    free(optimal);    // Caller should free address returned in blockStart parameter
     free(match_length);
     free(best_length);
-    return optimal[input_size-1];
+    return optimal[input_size - 1];
 }

@@ -34,20 +34,27 @@ BLOCK *ghost_root = NULL;
 BLOCK *dead_array = NULL;
 int dead_array_size = 0;
 
-BLOCK *allocate(int bits, int index, int offset, BLOCK *chain) {
+BLOCK* allocate(int bits, int index, int offset, BLOCK *chain)
+{
     BLOCK *ptr;
 
-    if (ghost_root) {
+    if (ghost_root)
+    {
         ptr = ghost_root;
         ghost_root = ptr->ghost_chain;
-        if (ptr->chain && !--ptr->chain->references) {
+        if (ptr->chain && !--ptr->chain->references)
+        {
             ptr->chain->ghost_chain = ghost_root;
             ghost_root = ptr->chain;
         }
-    } else {
-        if (!dead_array_size) {
-            dead_array = (BLOCK *)malloc(QTY_BLOCKS*sizeof(BLOCK));
-            if (!dead_array) {
+    }
+    else
+    {
+        if (!dead_array_size)
+        {
+            dead_array = (BLOCK*) malloc(QTY_BLOCKS * sizeof(BLOCK));
+            if (!dead_array)
+            {
                 fprintf(stderr, "Error: Insufficient memory\n");
                 exit(1);
             }
@@ -65,9 +72,11 @@ BLOCK *allocate(int bits, int index, int offset, BLOCK *chain) {
     return ptr;
 }
 
-void assign(BLOCK **ptr, BLOCK *chain) {
+void assign(BLOCK **ptr, BLOCK *chain)
+{
     chain->references++;
-    if (*ptr && !--(*ptr)->references) {
+    if (*ptr && !--(*ptr)->references)
+    {
         (*ptr)->ghost_chain = ghost_root;
         ghost_root = *ptr;
     }

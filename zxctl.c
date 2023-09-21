@@ -103,11 +103,8 @@ unsigned char* addBank(char *fileName, int *inputSize, int *outputSize, int *del
     *inputSize = fread(inputData, 1, MAX_INPUT, inFile);
     fclose(inFile);
 
-    if (debug)
-    {
-        printf("\n");
-        fprintf(stderr, "Compressing %s ", fileName);
-    }
+    printf("Compressing %s ", fileName);
+
     // Compress data
     outputData = doCompression(inputData, *inputSize, outputSize, delta, quick, backwards);
     if (debug)
@@ -116,7 +113,6 @@ unsigned char* addBank(char *fileName, int *inputSize, int *outputSize, int *del
         printf("Output size       : %d (0x%04x)\n", *outputSize, *outputSize);
         printf("Delta             : %d\n", *delta);
         printf("Compressed by     : %f%%\n", 100 - (((float) *outputSize / (float) *inputSize) * 100));
-        printf("\n");
     }
 
     return (outputData);
