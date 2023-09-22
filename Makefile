@@ -1,10 +1,9 @@
 PROJECT_NAME=zxctl
-CFLAGS:=-Wall -O2
+CFLAGS:=-Wall -O2 -MMD -c
 LDFLAGS:=-O2
-CSRC:=zxctl.c compress.c memory.c optimize.c
-COBJS:=$(CSRC:.c=.o)
-CXXSRC:=bin2rem.cpp
-CXXOBJS:=$(CXXSRC:.cpp=.o)
+CSRC:=$(wildcard *.c)
+CXXSRC:=$(wildcard *.cpp)
+OBJS:=$(CSRC:.c=.o) $(CXXSRC:.cpp=.o)
 
 .PHONY: all clean dis
 
@@ -19,12 +18,12 @@ dis: loader.bin
 	z88dk-dis -x loader.map -o start $^ | less
 
 %.o: %.c loader.h
-	$(CXX) $(CFLAGS) -c -MMD $< -o $@
+	$(CC) $(CFLAGS) $< -o $@
 
 %.o: %.cpp
-	$(CXX) $(CFLAGS) -c -MMD $< -o $@
+	$(CXX) $(CFLAGS) $< -o $@
 
-$(PROJECT_NAME): $(COBJS) $(CXXOBJS)
+$(PROJECT_NAME): $(OBJS)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
 loader.bin: loader.asm ld_bytes.bin
@@ -36,6 +35,4 @@ ld_bytes.bin: ld_bytes.asm
 loader.h: loader.bin
 	xxd -i $< > $@
 
--include $(COBJS:.o=.d)
--include $(CXXOBJS:.o=.d)
-
+-include $(OBJS:.o=.d)
