@@ -50,10 +50,10 @@ detect48K:
         out     (c), a                  ; Select bank 1
         ld      (de), a                 ; Write 1 to bank 1
 
-        ld      a, MEM_BANK_ROM
+        dec     a
         out     (c), a                  ; Select bank 0
-
         ld      a, (de)                 ; Read value from bank 0
+
         ; a = 0 (128K)
         ; a = 1 (48K)
         or      a
@@ -86,23 +86,25 @@ exec:
 		;
 loadBlock:
         push    af
-        ; Save sp
-        ld      (stackSave), sp
 
-        ld      sp, hl
-        pop     bc
+        ld      c, (hl)
+        inc     hl
+        ld      b, (hl)
+        inc     hl
         ld      (loadSize), bc
-        pop     bc
+        ld      c, (hl)
+        inc     hl
+        ld      b, (hl)
+        inc     hl
         ld      (loadAddr), bc
-        pop     bc
+        ld      c, (hl)
+        inc     hl
+        ld      b, (hl)
+        inc     hl
         ld      (destAddr), bc
-        ld      hl, sp
-
-stackSave   equ $+1
-        ld      sp, -1
 
         ; Set the bank to load
-        ld      bc, IO_BANK
+        ld      bc, IO_BANK             ; Memory bank port
         out     (c), a
 
         push    hl
@@ -158,11 +160,11 @@ loadBlockDone:
 dzx0_standard_back:
         ld      bc, 1                   ; preserve default offset 1
         push    bc
-        dec     c
         ld      a, $80
 dzx0sb_literals:
         call    dzx0sb_elias            ; obtain length
         lddr                            ; copy literals
+        inc     c
         add     a, a                    ; copy from last offset or new offset?
         jr      c, dzx0sb_new_offset
         call    dzx0sb_elias            ; obtain length
@@ -171,6 +173,7 @@ dzx0sb_copy:
         push    hl                      ; preserve offset
         add     hl, de                  ; calculate destination - offset
         lddr                            ; copy from offset
+        inc     c
         pop     hl                      ; restore offset
         ex      (sp), hl                ; preserve offset, restore source
         add     a, a                    ; copy from literals or new offset?
@@ -193,25 +196,23 @@ dzx0sb_new_offset:
         call    c, dzx0sb_elias_backtrack
         inc     bc
         jr      dzx0sb_copy
-dzx0sb_elias:
-        inc     c                       ; inverted interlaced Elias gamma coding
-dzx0sb_elias_loop:
+dzx0sb_elias_backtrack:
         add     a, a
+        rl      c
+        rl      b
+dzx0sb_elias:
+        add     a, a                    ; inverted interlaced Elias gamma coding
         jr      nz, dzx0sb_elias_skip
         ld      a, (hl)                 ; load another group of 8 bits
         dec     hl
         rla
 dzx0sb_elias_skip:
-        ret     nc
-dzx0sb_elias_backtrack:
-        add     a, a
-        rl      c
-        rl      b
-        jr      dzx0sb_elias_loop
+        jr      c, dzx0sb_elias_backtrack
+        ret
 ; -----------------------------------------------------------------------------
 ; -----------------------------------------------------------------------------
-; ZX0 decoder by Einar Saukas
-; "Standard" version (69 bytes only)
+; ZX0 decoder by Einar Saukas & Urusergi
+; "Standard" version (68 bytes only)
 ; -----------------------------------------------------------------------------
 ; Parameters:
 ;   HL: source address (compressed data)
@@ -238,14 +239,12 @@ dzx0s_copy:
         add     a, a                    ; copy from literals or new offset?
         jr      nc, dzx0s_literals
 dzx0s_new_offset:
-        call    dzx0s_elias             ; obtain offset MSB
-        ex      af, af'
-        pop     af                      ; discard last offset
-        xor     a                       ; adjust for negative offset
-        sub     c
+        pop     bc                      ; discard last offset
+        ld      c, $fe                  ; prepare negative offset
+        call    dzx0s_elias_loop        ; obtain offset MSB
+        inc     c
         ret     z                       ; check end marker
-        ld      b, a
-        ex      af, af'
+        ld      b, c
         ld      c, (hl)                 ; obtain offset LSB
         inc     hl
         rr      b                       ; last offset bit becomes first length bit

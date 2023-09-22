@@ -5,12 +5,17 @@ COBJS:=$(CSRC:.c=.o)
 CXXSRC:=bin2rem.cpp
 CXXOBJS:=$(CXXSRC:.cpp=.o)
 
+.PHONY: all clean dis
+
 all: $(PROJECT_NAME)
 
 clean:
 	rm -f $(PROJECT_NAME)
 	rm -f *.tap *.bin *.[od]
 	rm -f loader.h *.patch *.zx0 *.map
+
+dis: loader.bin
+	z88dk-dis -x loader.map -o start $^ | less
 
 %.o: %.c loader.h
 	c++ $(CFLAGS) -c -MMD $< -o $@

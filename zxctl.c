@@ -73,7 +73,7 @@ unsigned char* doCompression(unsigned char *input_data, int input_size, int *out
 {
     int skip = 0;
     unsigned char *output_data;
-    int classic_mode = TRUE;
+    int classic_mode = FALSE;
     void *blockStart = NULL;
 
     /* conditionally reverse input file */
@@ -138,11 +138,11 @@ int main(int argc, char **argv)
     { 0 };
     uint16_t *shortPtr;
 
-    if (argc < 7)
-        usage();
-
     printf("ZX Spectrum Compressed Tape Loader (ZXCTL)\n");
     printf("Version %s, (C) 2023 IrataHack, All Rights Reserved.\n\n", VERSION);
+
+    if (argc < 7)
+        usage();
 
     for (int arg = 1; arg < argc; arg++)
     {
