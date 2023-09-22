@@ -2,11 +2,17 @@
 ; This loader will be contained within a REM statement in
 ; a BASIC program created using bin2rem.
 ;
+		#define		CUSTOM_LOADER 0
+
         #define     MEM_BANK_ROM 0x10
         #define     IO_BORDER 0xfe
         #define     IO_BANK 0x7ffd
         #define     MIC_OUTPUT 8
+  IF CUSTOM_LOADER
+        #define     LD_BYTES $c000 - +(LD_BYTES_END-LD_BYTES_START) - 3
+  ELSE
         #define     LD_BYTES 0x556
+  ENDIF
         #define     ERR_SP 0x5c3d
         ; Screen memory addresses and dimensions
         #define     SCREEN_START 0x4000
@@ -29,6 +35,14 @@ start:
         ld      (hl), 0
         ld      bc, SCREEN_ATTR_LENGTH-1
         ldir
+
+  IF CUSTOM_LOADER
+        ; Copy LD_BYTES to a non-interleaved bank
+        ld      hl, LD_BYTES_START
+        ld      de, LD_BYTES
+        ld      bc, LD_BYTES_END-LD_BYTES_START
+        ldir
+  ENDIF
 
         ld      a, MEM_BANK_ROM
         ld      hl, screen
@@ -116,7 +130,9 @@ loadSize    equ $+1
         ld      a, d
         or      e
         jr      z, loadBlockDone
-
+  IF CUSTOM_LOADER
+        call    LD_BYTES                ; Do the load
+  ELSE
         ld      a, 0xff                 ; Data block
         scf                             ; Load not verify
         ld      hl, $0000               ; Address to jump to on error
@@ -125,7 +141,7 @@ loadSize    equ $+1
         call    LD_BYTES                ; Do the load
         di
         pop     hl                      ; Error handler address
-
+  ENDIF
         ld      a, MIC_OUTPUT
         out     (IO_BORDER), a
 
@@ -148,6 +164,12 @@ loadBlockDone:
         pop     hl
         pop     af
         ret
+
+  IF CUSTOM_LOADER
+LD_BYTES_START:
+        binary  "ld_bytes.bin"
+LD_BYTES_END:
+  ENDIF
 
 ; -----------------------------------------------------------------------------
 ; ZX0 decoder by Einar Saukas

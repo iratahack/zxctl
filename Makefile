@@ -26,7 +26,10 @@ dis: loader.bin
 $(PROJECT_NAME): $(COBJS) $(CXXOBJS)
 	c++  $^ -O2 -o $@
 
-loader.bin: loader.asm
+loader.bin: loader.asm ld_bytes.bin
+	z88dk-z80asm -mz80 -m -b -o$@ $<
+
+ld_bytes.bin: ld_bytes.asm
 	z88dk-z80asm -mz80 -m -b -o$@ $<
 
 loader.h: loader.bin

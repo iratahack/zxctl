@@ -258,7 +258,8 @@ int main(int argc, char **argv)
         {
             quick = 1;
         }
-        else if ((strcmp(argv[arg], "-1") == 0) || (strcmp(argv[arg], "-3") == 0) || (strcmp(argv[arg], "-4") == 0)
+        else if ((strcmp(argv[arg], "-0") == 0) || (strcmp(argv[arg], "-1") == 0) || (strcmp(argv[arg], "-2") == 0)
+                || (strcmp(argv[arg], "-3") == 0) || (strcmp(argv[arg], "-4") == 0) || (strcmp(argv[arg], "-5") == 0)
                 || (strcmp(argv[arg], "-6") == 0) || (strcmp(argv[arg], "-7") == 0))
         {
             int bankNum;
@@ -280,6 +281,10 @@ int main(int argc, char **argv)
                 exit(1);
             }
         }
+        else
+        {
+            fprintf(stderr, "Unknown parameter '%s'\n", argv[arg]);
+        }
     }
 
     if (!strlen(outputFile))
@@ -297,12 +302,15 @@ int main(int argc, char **argv)
         maxDelta = delta > maxDelta ? delta : maxDelta;
     }
 
-    // Setup the main bank
-    outputData[1] = addBank(mainBank, &inputSize, &outputSize[1], &delta, quick, 1);
-    blocks[1].loadSize = bswap_16(htons(outputSize[1]));
-    blocks[1].loadAddr = bswap_16(htons(loadAddress - delta));
-    blocks[1].destAddr = bswap_16(htons(loadAddress + inputSize - 1));
-    maxDelta = delta > maxDelta ? delta : maxDelta;
+    if (strlen(mainBank))
+    {
+        // Setup the main bank
+        outputData[1] = addBank(mainBank, &inputSize, &outputSize[1], &delta, quick, 1);
+        blocks[1].loadSize = bswap_16(htons(outputSize[1]));
+        blocks[1].loadAddr = bswap_16(htons(loadAddress - delta));
+        blocks[1].destAddr = bswap_16(htons(loadAddress + inputSize - 1));
+        maxDelta = delta > maxDelta ? delta : maxDelta;
+    }
 
     for (int n = 2; n < MAX_BLOCKS; n++)
     {
