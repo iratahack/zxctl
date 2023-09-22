@@ -87,9 +87,9 @@ exec:
         ld      a, MEM_BANK_ROM
         ld      bc, IO_BANK             ; Memory bank port
         out     (c), a                  ; Select bank 0
-		; Execute the program
-        ld      hl, (execAddr)
-        jp      (hl)
+        ; Exec address is stored directly above stack
+        ; we can simply return to the execAddr
+        ret
 
 		;
 		; Load and decompress a block from tape
@@ -100,36 +100,35 @@ exec:
 		;
 loadBlock:
         push    af
-
-        ld      c, (hl)
-        inc     hl
-        ld      b, (hl)
-        inc     hl
-        ld      (loadSize), bc
-        ld      c, (hl)
-        inc     hl
-        ld      b, (hl)
-        inc     hl
-        ld      (loadAddr), bc
-        ld      c, (hl)
-        inc     hl
-        ld      b, (hl)
-        inc     hl
-        ld      (destAddr), bc
-
-        ; Set the bank to load
-        ld      bc, IO_BANK             ; Memory bank port
-        out     (c), a
-
         push    hl
 
-loadAddr    equ $+2
-        ld      ix, -1
-loadSize    equ $+1
-        ld      de, -1
+        ; Set the bank to load
+        ld      bc, IO_BANK
+        out     (c), a
+
+        ld      e, (hl)
+        inc     hl
+        ld      d, (hl)
+        inc     hl
         ld      a, d
         or      e
         jr      z, loadBlockDone
+        push    de                      ; loadSize
+
+        ld      c, (hl)
+        inc     hl
+        ld      b, (hl)
+        inc     hl
+        push    bc                      ; loadAddr
+        push    bc
+        pop     ix
+
+        ld      c, (hl)
+        inc     hl
+        ld      b, (hl)
+        inc     hl
+        push    bc                      ; destAddr
+
   IF CUSTOM_LOADER
         call    LD_BYTES                ; Do the load
   ELSE
@@ -145,14 +144,13 @@ loadSize    equ $+1
         ld      a, MIC_OUTPUT
         out     (IO_BORDER), a
 
-destAddr    equ $+1
-        ld      de, -1
-        ld      hl, (loadAddr)
-        ld      bc, (loadSize)
+        pop     de                      ; destAddr
+        pop     hl                      ; loadAddr
+        pop     bc                      ; loadSize
         ld      a, d
         cp      $40                     ; Check for $40xx (screen memory)
-        jr      nz, reverse
-        call    dzx0_standard
+        jr      nz, reverse             ; if not, use reverse decompression
+        call    dzx0_standard           ; else, decompress forwards
         jr      loadBlockDone
 
 reverse:
@@ -162,6 +160,8 @@ reverse:
 
 loadBlockDone:
         pop     hl
+        ld      bc, $6
+        add     hl, bc
         pop     af
         ret
 

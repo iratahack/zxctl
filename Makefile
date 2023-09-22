@@ -1,5 +1,6 @@
 PROJECT_NAME=zxctl
 CFLAGS:=-Wall -O2
+LDFLAGS:=-O2
 CSRC:=zxctl.c compress.c memory.c optimize.c
 COBJS:=$(CSRC:.c=.o)
 CXXSRC:=bin2rem.cpp
@@ -18,13 +19,13 @@ dis: loader.bin
 	z88dk-dis -x loader.map -o start $^ | less
 
 %.o: %.c loader.h
-	c++ $(CFLAGS) -c -MMD $< -o $@
+	$(CXX) $(CFLAGS) -c -MMD $< -o $@
 
 %.o: %.cpp
-	c++ $(CFLAGS) -c -MMD $< -o $@
+	$(CXX) $(CFLAGS) -c -MMD $< -o $@
 
 $(PROJECT_NAME): $(COBJS) $(CXXOBJS)
-	c++  $^ -O2 -o $@
+	$(CXX) $(LDFLAGS) $^ -o $@
 
 loader.bin: loader.asm ld_bytes.bin
 	z88dk-z80asm -mz80 -m -b -o$@ $<
