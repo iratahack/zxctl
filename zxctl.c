@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
+#include <stdint.h>
 #include <byteswap.h>
 #include "zx0.h"
 
@@ -32,16 +32,16 @@ static char outputFile[MAX_FILENAME] =
 { 0 };
 static char screenName[MAX_FILENAME] =
 { 0 };
-static char tapeName[MAX_FILENAME] = "Loader    ";
+static char tapeName[MAX_FILENAME] = "Loader";
 
 void usage(void)
 {
     fprintf(stderr, "Usage:\n");
     fprintf(stderr, "\tzxctl --load <address> --exec <address> --main <file> [options]\n");
     fprintf(stderr, "Where:\n");
-    fprintf(stderr, "\t-l,--load <address>  Load address of the main bank (5, 2, 0)\n");
+    fprintf(stderr, "\t-l,--load <address>  Load address of the main bank (5,2,0), >= 0x6000\n");
     fprintf(stderr, "\t-e,--exec <address>  Exec address in main bank\n");
-    fprintf(stderr, "\t-m,--main <mainbank> Binary file containing 'main' bank (5, 2, 0)\n");
+    fprintf(stderr, "\t-m,--main <mainbank> Binary file containing 'main' bank (5,2,0)\n");
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "\t-d,--debug           Enable debug logging\n");
     fprintf(stderr, "\t-o,--output <file>   Output file name (.tap), defaults <mainbank>.tap\n");
@@ -296,9 +296,9 @@ int main(int argc, char **argv)
     if (strlen(screenName))
     {
         outputData[0] = addBank(screenName, &inputSize, &outputSize[0], &delta, quick, 0);
-        blocks[0].loadSize = bswap_16(htons(outputSize[0]));
-        blocks[0].loadAddr = bswap_16(htons(0xc000));
-        blocks[0].destAddr = bswap_16(htons(0x4000));
+        blocks[0].loadSize = htole16(outputSize[0]);
+        blocks[0].loadAddr = htole16(0xc000);
+        blocks[0].destAddr = htole16(0x4000);
         maxDelta = delta > maxDelta ? delta : maxDelta;
     }
 
@@ -306,9 +306,9 @@ int main(int argc, char **argv)
     {
         // Setup the main bank
         outputData[1] = addBank(mainBank, &inputSize, &outputSize[1], &delta, quick, 1);
-        blocks[1].loadSize = bswap_16(htons(outputSize[1]));
-        blocks[1].loadAddr = bswap_16(htons(loadAddress - delta));
-        blocks[1].destAddr = bswap_16(htons(loadAddress + inputSize - 1));
+        blocks[1].loadSize = htole16(outputSize[1]);
+        blocks[1].loadAddr = htole16(loadAddress - delta);
+        blocks[1].destAddr = htole16(loadAddress + inputSize - 1);
         maxDelta = delta > maxDelta ? delta : maxDelta;
     }
 
@@ -317,9 +317,9 @@ int main(int argc, char **argv)
         if (strlen(bankNames[n - 2]))
         {
             outputData[n] = addBank(bankNames[n - 2], &inputSize, &outputSize[n], &delta, quick, 1);
-            blocks[n].loadSize = bswap_16(htons(outputSize[n]));
-            blocks[n].loadAddr = bswap_16(htons(0xc000 - delta));
-            blocks[n].destAddr = bswap_16(htons(0xc000 + inputSize - 1));
+            blocks[n].loadSize = htole16(outputSize[n]);
+            blocks[n].loadAddr = htole16(0xc000 - delta);
+            blocks[n].destAddr = htole16(0xc000 + inputSize - 1);
             maxDelta = delta > maxDelta ? delta : maxDelta;
         }
     }
@@ -327,7 +327,7 @@ int main(int argc, char **argv)
     // Patch the loader for this bank
     shortPtr = (uint16_t*) &loader_bin[loader_bin_len - (MAX_BLOCKS * sizeof(blocks_t)) - 2];
     // execAddr
-    *shortPtr++ = bswap_16(htons(execAddress));
+    *shortPtr++ = htole16(execAddress);
 
     if (debug)
     {
