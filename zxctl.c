@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <byteswap.h>
 #include "zx0.h"
 
 #include "loader.h"
@@ -54,6 +53,17 @@ void usage(void)
     fprintf(stderr, "\n");
 
     exit(1);
+}
+
+// Convert host short to little endian
+// Use our own since its cross-platform
+static uint16_t _htole16(uint16_t value)
+{
+    uint16_t test = 0x55aa;
+
+    if ((*(unsigned char*) &test) != 0xaa)
+        value = ((value >> 8) | (value << 8));
+    return (value);
 }
 
 void reverse(unsigned char *first, unsigned char *last)
@@ -296,9 +306,9 @@ int main(int argc, char **argv)
     if (strlen(screenName))
     {
         outputData[0] = addBank(screenName, &inputSize, &outputSize[0], &delta, quick, 0);
-        blocks[0].loadSize = htole16(outputSize[0]);
-        blocks[0].loadAddr = htole16(0xc000);
-        blocks[0].destAddr = htole16(0x4000);
+        blocks[0].loadSize = _htole16(outputSize[0]);
+        blocks[0].loadAddr = _htole16(0xc000);
+        blocks[0].destAddr = _htole16(0x4000);
         maxDelta = delta > maxDelta ? delta : maxDelta;
     }
 
@@ -306,9 +316,9 @@ int main(int argc, char **argv)
     {
         // Setup the main bank
         outputData[1] = addBank(mainBank, &inputSize, &outputSize[1], &delta, quick, 1);
-        blocks[1].loadSize = htole16(outputSize[1]);
-        blocks[1].loadAddr = htole16(loadAddress - delta);
-        blocks[1].destAddr = htole16(loadAddress + inputSize - 1);
+        blocks[1].loadSize = _htole16(outputSize[1]);
+        blocks[1].loadAddr = _htole16(loadAddress - delta);
+        blocks[1].destAddr = _htole16(loadAddress + inputSize - 1);
         maxDelta = delta > maxDelta ? delta : maxDelta;
     }
 
@@ -317,9 +327,9 @@ int main(int argc, char **argv)
         if (strlen(bankNames[n - 2]))
         {
             outputData[n] = addBank(bankNames[n - 2], &inputSize, &outputSize[n], &delta, quick, 1);
-            blocks[n].loadSize = htole16(outputSize[n]);
-            blocks[n].loadAddr = htole16(0xc000 - delta);
-            blocks[n].destAddr = htole16(0xc000 + inputSize - 1);
+            blocks[n].loadSize = _htole16(outputSize[n]);
+            blocks[n].loadAddr = _htole16(0xc000 - delta);
+            blocks[n].destAddr = _htole16(0xc000 + inputSize - 1);
             maxDelta = delta > maxDelta ? delta : maxDelta;
         }
     }
@@ -327,7 +337,7 @@ int main(int argc, char **argv)
     // Patch the loader for this bank
     shortPtr = (uint16_t*) &loader_bin[loader_bin_len - (MAX_BLOCKS * sizeof(blocks_t)) - 2];
     // execAddr
-    *shortPtr++ = htole16(execAddress);
+    *shortPtr++ = _htole16(execAddress);
 
     if (debug)
     {
