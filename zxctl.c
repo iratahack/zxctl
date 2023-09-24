@@ -137,7 +137,7 @@ unsigned char* addBank(char *fileName, int *inputSize, int *outputSize, int *del
     unsigned char inputData[MAX_INPUT];
 
     // Read from the input file
-    if ((inFile = fopen(fileName, "r")) == NULL)
+    if ((inFile = fopen(fileName, "rb")) == NULL)
     {
         fprintf(stderr, "Error opening '%s'\n", fileName);
         exit(1);

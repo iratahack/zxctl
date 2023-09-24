@@ -54,7 +54,7 @@ void appendTap(unsigned char *outputData, int outputSize, char *fileName)
     string output((const char*) outputData, outputSize);
     string outputFile((const char*) fileName);
 
-    FILE *fout = fopen(outputFile.c_str(), "a");
+    FILE *fout = fopen(outputFile.c_str(), "ab");
     if (!fout)
         error("Error opening the output file `" + outputFile + "'");
 
