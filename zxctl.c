@@ -328,7 +328,7 @@ int main(int argc, char **argv)
             // find the call to LD_BYTES
             offset = memmem(loader_bin, loader_bin_len, val, 2);
 
-            *((uint16_t*) &loader_bin[offset]) = htole16(0xc000 - 160);
+            *((uint16_t*) &loader_bin[offset]) = _htole16(0xc000 - 160);
             if (debug)
             {
                 printf("LD_BYTES called at offset %d\n", offset);
