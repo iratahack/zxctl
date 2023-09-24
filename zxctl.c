@@ -6,8 +6,9 @@
 
 #include "loader.h"
 
-typedef struct __packed__
+typedef struct __attribute__((packed))
 {
+    uint8_t bank;
     uint16_t loadSize;
     uint16_t loadAddr;
     uint16_t destAddr;
@@ -17,11 +18,15 @@ typedef struct __packed__
 #define MAX_OFFSET_ZX0 32640
 #define MAX_OFFSET_ZX7 2176
 #define MAX_INPUT 0x10000
-#define MAX_BLOCKS 10
+#define MAX_BLOCKS 9
+#define MAX_BANKS 8
 #define MAX_FILENAME 128
 
 extern void bin2rem(unsigned char *loader, int size, char *fileName, char *tapeName);
 extern void appendTap(unsigned char *outputData, int outputSize, char *fileName);
+
+static int totalIn = 0;
+static int totalOut = 0;
 
 static int debug = 0;
 static int info = 0;
@@ -48,8 +53,12 @@ void usage(void)
     fprintf(stderr, "\t-t,--tape <file>     Name of the basic loader, defaults to 'Loader    '\n");
     fprintf(stderr, "\t-q,--quick           Enable quick compress mode for ZX0\n");
     fprintf(stderr, "\t-[1,3,4,6,7] <file>  Optional 128K banks to include\n");
-    fprintf(stderr, "\t                       (Only loaded on 128K systems)\n");
+    fprintf(stderr, "\t                     (Only loaded on 128K systems)\n");
     fprintf(stderr, "\t-i,--info            Display compression info\n");
+    fprintf(stderr, "\t-f--fancy            Enable custom loader with fancy border colors\n");
+    fprintf(stderr, "\t                     Bank 0 cannot be part of <mainbank> it must be\n");
+    fprintf(stderr, "\t                     loaded with -0 and 160 bytes of from $bf60-$c000\n");
+    fprintf(stderr, "\t                     must be reserved in bank 2 for the loader\n");
     fprintf(stderr, "\n");
 
     exit(1);
@@ -64,6 +73,23 @@ static uint16_t _htole16(uint16_t value)
     if ((*(unsigned char*) &test) != 0xaa)
         value = ((value >> 8) | (value << 8));
     return (value);
+}
+
+int memmem(unsigned char *data, int dataLen, unsigned char *subData, int subDataLen)
+{
+    int match;
+    for (int d = 0; d < dataLen; d++)
+    {
+        match = 0;
+        for (int s = 0; s < subDataLen; s++)
+        {
+            if (data[d + s] == subData[s])
+                match++;
+        }
+        if (match == subDataLen)
+            return (d);
+    }
+    return (-1);
 }
 
 void reverse(unsigned char *first, unsigned char *last)
@@ -92,6 +118,9 @@ unsigned char* doCompression(unsigned char *input_data, int input_size, int *out
 
     output_data = compress(optimize(input_data, input_size, skip, quick_mode ? MAX_OFFSET_ZX7 : MAX_OFFSET_ZX0, &blockStart),
             input_data, input_size, skip, backwards_mode, !classic_mode && !backwards_mode, output_size, delta);
+
+    totalIn += input_size;
+    totalOut += *output_size;
 
     /* conditionally reverse output file */
     if (backwards_mode)
@@ -125,7 +154,7 @@ unsigned char* addBank(char *fileName, int *inputSize, int *outputSize, int *del
         printf("Input size        : %d (0x%04x)\n", *inputSize, *inputSize);
         printf("Output size       : %d (0x%04x)\n", *outputSize, *outputSize);
         printf("Delta             : %d\n", *delta);
-        printf("Compressed by     : %f%%\n", 100 - (((float) *outputSize / (float) *inputSize) * 100));
+        printf("Compressed by     : %.1f%%\n", 100 - (((float) *outputSize / (float) *inputSize) * 100));
     }
 
     return (outputData);
@@ -291,6 +320,20 @@ int main(int argc, char **argv)
                 exit(1);
             }
         }
+        else if ((strcmp(argv[arg], "--fancy") == 0) || (strcmp(argv[arg], "-f") == 0))
+        {
+            unsigned char val[] =
+            { 0x56, 0x05 };
+            unsigned int offset = 0;
+            // find the call to LD_BYTES
+            offset = memmem(loader_bin, loader_bin_len, val, 2);
+
+            *((uint16_t*) &loader_bin[offset]) = htole16(0xc000 - 160);
+            if (debug)
+            {
+                printf("LD_BYTES called at offset %d\n", offset);
+            }
+        }
         else
         {
             fprintf(stderr, "Unknown parameter '%s'\n", argv[arg]);
@@ -306,6 +349,7 @@ int main(int argc, char **argv)
     if (strlen(screenName))
     {
         outputData[0] = addBank(screenName, &inputSize, &outputSize[0], &delta, quick, 0);
+        blocks[0].bank = 0x10;
         blocks[0].loadSize = _htole16(outputSize[0]);
         blocks[0].loadAddr = _htole16(0xc000);
         blocks[0].destAddr = _htole16(0x4000);
@@ -316,25 +360,29 @@ int main(int argc, char **argv)
     {
         // Setup the main bank
         outputData[1] = addBank(mainBank, &inputSize, &outputSize[1], &delta, quick, 1);
+        blocks[1].bank = 0x10;
         blocks[1].loadSize = _htole16(outputSize[1]);
         blocks[1].loadAddr = _htole16(loadAddress - delta);
         blocks[1].destAddr = _htole16(loadAddress + inputSize - 1);
         maxDelta = delta > maxDelta ? delta : maxDelta;
     }
 
-    for (int n = 2; n < MAX_BLOCKS; n++)
+    int currentBlock = 2;
+    for (int n = 0; n < MAX_BANKS; n++)
     {
-        if (strlen(bankNames[n - 2]))
+        if (strlen(bankNames[n]))
         {
-            outputData[n] = addBank(bankNames[n - 2], &inputSize, &outputSize[n], &delta, quick, 1);
-            blocks[n].loadSize = _htole16(outputSize[n]);
-            blocks[n].loadAddr = _htole16(0xc000 - delta);
-            blocks[n].destAddr = _htole16(0xc000 + inputSize - 1);
+            outputData[currentBlock] = addBank(bankNames[n], &inputSize, &outputSize[currentBlock], &delta, quick, 1);
+            blocks[currentBlock].bank = n | 0x10;
+            blocks[currentBlock].loadSize = _htole16(outputSize[currentBlock]);
+            blocks[currentBlock].loadAddr = _htole16(0xc000 - delta);
+            blocks[currentBlock].destAddr = _htole16(0xc000 + inputSize - 1);
             maxDelta = delta > maxDelta ? delta : maxDelta;
+            currentBlock++;
         }
     }
 
-    // Patch the loader for this bank
+    // Patch the exec address
     shortPtr = (uint16_t*) &loader_bin[loader_bin_len - (MAX_BLOCKS * sizeof(blocks_t)) - 2];
     // execAddr
     *shortPtr++ = _htole16(execAddress);
@@ -366,7 +414,11 @@ int main(int argc, char **argv)
         }
     }
 
-    printf("** Max delta across all blocks: %d bytes **\n", maxDelta);
+    if (info)
+    {
+        printf("** Max delta across all blocks: %d bytes **\n", maxDelta);
+        printf("Total compression : %.1f%%\n", 100 - (((float) totalOut / (float) totalIn) * 100));
+    }
 
     return (0);
 }

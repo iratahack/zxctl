@@ -2,26 +2,22 @@
 ; This loader will be contained within a REM statement in
 ; a BASIC program created using bin2rem.
 ;
-		#define		CUSTOM_LOADER 0
 
-        #define     MEM_BANK_ROM 0x10
-        #define     IO_BORDER 0xfe
-        #define     IO_BANK 0x7ffd
-        #define     MIC_OUTPUT 8
-  IF CUSTOM_LOADER
-        #define     LD_BYTES $c000 - +(LD_BYTES_END-LD_BYTES_START) - 3
-  ELSE
-        #define     LD_BYTES 0x556
-  ENDIF
-        #define     ERR_SP 0x5c3d
+        defc    MEM_BANK_ROM=0x10
+        defc    IO_BORDER=0xfe
+        defc    IO_BANK=0x7ffd
+        defc    MIC_OUTPUT=8
+        defc    FLD_BYTES=+($c000-160)
+        defc    LD_BYTES=0x556
+        defc    ERR_SP=0x5c3d
         ; Screen memory addresses and dimensions
-        #define     SCREEN_START 0x4000
-        #define     SCREEN_LENGTH 0x1800
-        #define     SCREEN_END SCREEN_START + SCREEN_LENGTH
-        #define     SCREEN_ATTR_START SCREEN_START + SCREEN_LENGTH
-        #define     SCREEN_ATTR_LENGTH 0x300
-        #define     SCREEN_ATTR_END SCREEN_ATTR_START + SCREEN_ATTR_LENGTH
-        #define     BORDCR 0x5c48
+        defc    SCREEN_START=0x4000
+        defc    SCREEN_LENGTH=0x1800
+        defc    SCREEN_END=SCREEN_START+SCREEN_LENGTH
+        defc    SCREEN_ATTR_START=SCREEN_START+SCREEN_LENGTH
+        defc    SCREEN_ATTR_LENGTH=0x300
+        defc    SCREEN_ATTR_END=SCREEN_ATTR_START+SCREEN_ATTR_LENGTH
+        defc    BORDCR=0x5c48
 
         ; Start address used by bin2rem 23766
         org     0x5cd6
@@ -36,20 +32,11 @@ start:
         ld      bc, SCREEN_ATTR_LENGTH-1
         ldir
 
-  IF CUSTOM_LOADER
         ; Copy LD_BYTES to a non-interleaved bank
         ld      hl, LD_BYTES_START
-        ld      de, LD_BYTES
+        ld      de, FLD_BYTES
         ld      bc, LD_BYTES_END-LD_BYTES_START
         ldir
-  ENDIF
-
-        ld      a, MEM_BANK_ROM
-        ld      hl, screen
-        ; Load the screen
-        call    loadBlock
-        ; Load banks 5, 2, 0 in one go
-        call    loadBlock
 
         ; Detect 128K/48K
 detect48K:
@@ -71,19 +58,37 @@ detect48K:
         ; a = 0 (128K)
         ; a = 1 (48K)
         or      a
-        jr      nz, exec
+        jr      z, fullLoad
+
+        ; Prevent 128K banks from loading
+        ; on 48K systems
+        ld      b, 9
+        ld      hl, blocks
+        ld      de, 7
+testBlock:
+        ld      a, $15
+        cp      (hl)
+        jr      z, loadIt
+        ld      a, $12
+        cp      (hl)
+        jr      z, loadIt
+        ld      a, $10
+        cp      (hl)
+        jr      z, loadIt
+        ; Prevent block from loading by setting back
+        ; to -1
+        ld      (hl), -1
+loadIt:
+        add     hl, de
+        djnz    testBlock
 
 fullLoad:
-        ld      a, MEM_BANK_ROM
-        ld      hl, banks
-
-nextBank:
+        ld      b, 9
+        ld      hl, blocks
+nextBlock:
         call    loadBlock
-        inc     a
-        cp      MEM_BANK_ROM|8
-        jr      nz, nextBank
+        djnz    nextBlock
 
-exec:
         ld      a, MEM_BANK_ROM
         ld      bc, IO_BANK             ; Memory bank port
         out     (c), a                  ; Select bank 0
@@ -99,20 +104,21 @@ exec:
         ;       hl  - Pointer to block data
 		;
 loadBlock:
-        push    af
+        push    bc
         push    hl
 
         ; Set the bank to load
         ld      bc, IO_BANK
+        ld      a, (hl)
+        or      a
+        jp      m, loadBlockDone
+        inc     hl
         out     (c), a
 
         ld      e, (hl)
         inc     hl
         ld      d, (hl)
         inc     hl
-        ld      a, d
-        or      e
-        jr      z, loadBlockDone
         push    de                      ; loadSize
 
         ld      c, (hl)
@@ -129,18 +135,16 @@ loadBlock:
         inc     hl
         push    bc                      ; destAddr
 
-  IF CUSTOM_LOADER
-        call    LD_BYTES                ; Do the load
-  ELSE
         ld      a, 0xff                 ; Data block
         scf                             ; Load not verify
         ld      hl, $0000               ; Address to jump to on error
         push    hl
         ld      (ERR_SP), sp
+tapeLoader  equ $+1
         call    LD_BYTES                ; Do the load
         di
         pop     hl                      ; Error handler address
-  ENDIF
+
         ld      a, MIC_OUTPUT
         out     (IO_BORDER), a
 
@@ -160,16 +164,14 @@ reverse:
 
 loadBlockDone:
         pop     hl
-        ld      bc, $6
+        ld      bc, $7
         add     hl, bc
-        pop     af
+        pop     bc
         ret
 
-  IF CUSTOM_LOADER
 LD_BYTES_START:
         binary  "ld_bytes.bin"
 LD_BYTES_END:
-  ENDIF
 
 ; -----------------------------------------------------------------------------
 ; ZX0 decoder by Einar Saukas
@@ -295,11 +297,9 @@ dzx0s_elias_backtrack:
 
         ds      24, $55
 stack:
-execAddr:
         ds      2
-screen:
-        ds      6                       ; Screen
-mainBank:
-        ds      6                       ; Main bank (5, 2, 0)
-banks:
-        ds      6*8                     ; Banks 0-7
+blocks:
+        REPT    9
+        db      $ff
+        ds      6
+        ENDR

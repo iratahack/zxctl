@@ -6,7 +6,7 @@
         DEFC    CRT_LOADER_RAINBOW=1
 
         ; $c000 - size of routine - compression delta
-        org     $c000-3-146
+        org     $c000-160
         ;
         ; LD_BYTES routine from the ZX Spectrum ROM
         ;
