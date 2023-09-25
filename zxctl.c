@@ -24,6 +24,7 @@ typedef struct __attribute__((packed))
 
 extern void bin2rem(unsigned char *loader, int size, char *fileName, char *tapeName);
 extern void appendTap(unsigned char *outputData, int outputSize, char *fileName);
+extern int tap2wav(char *tapFileName, int ROMLoader);
 
 static int totalIn = 0;
 static int totalOut = 0;
@@ -55,10 +56,12 @@ void usage(void)
     fprintf(stderr, "\t-[1,3,4,6,7] <file>  Optional 128K banks to include\n");
     fprintf(stderr, "\t                     (Only loaded on 128K systems)\n");
     fprintf(stderr, "\t-i,--info            Display compression info\n");
-    fprintf(stderr, "\t-f--fancy            Enable custom loader with fancy border colors\n");
+    fprintf(stderr, "\t-c--custom           Enable custom loader with fancy border colors\n");
     fprintf(stderr, "\t                     Bank 0 cannot be part of <mainbank> it must be\n");
     fprintf(stderr, "\t                     loaded with -0 and 160 bytes of from $bf60-$c000\n");
     fprintf(stderr, "\t                     must be reserved in bank 2 for the loader\n");
+    fprintf(stderr, "\t-w,--wav             Convert the .tap file to a .wav file\n");
+    fprintf(stderr, "\t-f,--fast            Enable turbo loader, implies -w and -c\n");
     fprintf(stderr, "\n");
 
     exit(1);
@@ -176,6 +179,9 @@ int main(int argc, char **argv)
     unsigned char *outputData[MAX_BLOCKS] =
     { 0 };
     uint16_t *shortPtr;
+    int wavOut = 0;
+    int ROMLoader = 1;
+    int custom = 0;
 
     printf("ZX Spectrum Compressed Tape Loader (ZXCTL)\n");
     printf("Version %s, (C) 2023 IrataHack, All Rights Reserved.\n\n", VERSION);
@@ -320,23 +326,46 @@ int main(int argc, char **argv)
                 exit(1);
             }
         }
-        else if ((strcmp(argv[arg], "--fancy") == 0) || (strcmp(argv[arg], "-f") == 0))
+        else if ((strcmp(argv[arg], "--custom") == 0) || (strcmp(argv[arg], "-c") == 0))
+        {
+            custom = 1;
+        }
+        else if ((strcmp(argv[arg], "--wav") == 0) || (strcmp(argv[arg], "-w") == 0))
+        {
+            wavOut = 1;
+        }
+        else if ((strcmp(argv[arg], "--fast") == 0) || (strcmp(argv[arg], "-f") == 0))
         {
             unsigned char val[] =
-            { 0x56, 0x05 };
+            { 0x3e, 0x00 }; // ld a, $00
             unsigned int offset = 0;
             // find the call to LD_BYTES
             offset = memmem(loader_bin, loader_bin_len, val, 2);
 
-            *((uint16_t*) &loader_bin[offset]) = _htole16(0xc000 - 160);
-            if (debug)
-            {
-                printf("LD_BYTES called at offset %d\n", offset);
-            }
+            loader_bin[offset + 1] = 0xff;
+
+            wavOut = 1;
+            custom = 1;
+            ROMLoader = 0;
         }
         else
         {
             fprintf(stderr, "Unknown parameter '%s'\n", argv[arg]);
+        }
+    }
+
+    if (custom)
+    {
+        unsigned char val[] =
+        { 0x56, 0x05 };
+        unsigned int offset = 0;
+        // find the call to LD_BYTES
+        offset = memmem(loader_bin, loader_bin_len, val, 2);
+
+        *((uint16_t*) &loader_bin[offset]) = _htole16(0xc000 - 160);
+        if (debug)
+        {
+            printf("LD_BYTES called at offset %d\n", offset);
         }
     }
 
@@ -413,6 +442,9 @@ int main(int argc, char **argv)
             free(outputData[n]);
         }
     }
+
+    if (wavOut)
+        tap2wav(outputFile, ROMLoader);
 
     if (info)
     {

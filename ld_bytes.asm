@@ -155,4 +155,3 @@ LD_SAMPLE:
         OUT     (IO_ULA), A             ; Change the border colour (red/black).
         SCF                             ; Signal the successful search before returning.
         RET
-LD_BYTES_END:

@@ -8,3 +8,4 @@ loader.h
 loader.patch
 *.zx0
 zxctl
+*.exe

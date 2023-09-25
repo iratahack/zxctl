@@ -26,10 +26,10 @@ dis: loader.bin
 $(PROJECT_NAME): $(OBJS)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
-loader.bin: loader.asm ld_bytes.bin
+loader.bin: loader.asm ld_bytes.bin turbo.bin
 	z88dk-z80asm -mz80 -m -b -o$@ $<
 
-ld_bytes.bin: ld_bytes.asm
+%.bin: %.asm
 	z88dk-z80asm -mz80 -m -b -o$@ $<
 
 loader.h: loader.bin

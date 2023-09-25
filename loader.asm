@@ -28,14 +28,22 @@ start:
         ; Set screen attributes
         ld      hl, SCREEN_ATTR_START
         ld      de, SCREEN_ATTR_START+1
-        ld      (hl), 0
         ld      bc, SCREEN_ATTR_LENGTH-1
+        ld      (hl), 0
         ldir
 
-        ; Copy LD_BYTES to a non-interleaved bank
+        ld      bc, 160
+        ; Copy turbo loader to a non-contended bank
+        ld      hl, TURBO_BYTES_START
+        ld      de, FLD_BYTES
+        ld      a, $00
+        or      a
+        jr      nz, turboLoad
+
+        ; Copy LD_BYTES to a non-contended bank
         ld      hl, LD_BYTES_START
         ld      de, FLD_BYTES
-        ld      bc, LD_BYTES_END-LD_BYTES_START
+turboLoad:
         ldir
 
         ; Detect 128K/48K
@@ -169,10 +177,6 @@ loadBlockDone:
         pop     bc
         ret
 
-LD_BYTES_START:
-        binary  "ld_bytes.bin"
-LD_BYTES_END:
-
 ; -----------------------------------------------------------------------------
 ; ZX0 decoder by Einar Saukas
 ; "Standard" version (69 bytes only) - BACKWARDS VARIANT
@@ -294,6 +298,12 @@ dzx0s_elias_backtrack:
         rl      b
         jr      dzx0s_elias_loop
 ; -----------------------------------------------------------------------------
+LD_BYTES_START:
+        binary  "ld_bytes.bin"
+LD_BYTES_END:
+TURBO_BYTES_START:
+        binary  "turbo.bin"
+TURBO_BYTES_END:
 
         ds      24, $55
 stack:
