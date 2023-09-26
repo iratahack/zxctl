@@ -151,7 +151,7 @@ LD_SAMPLE:
 
         LD      C, A                    ; (ROM) ld a,c  ... (in ROM: RED/CYAN or BLUE/YELLOW)
 
-  IF 0
+  IF    0
         LD      A, B                    ; (ROM) cpl
         NOP                             ; (ROM) ld c,a
   ELSE

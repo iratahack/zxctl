@@ -5,6 +5,8 @@
 #include "zx0.h"
 
 #include "loader.h"
+#include "ld_bytes.h"
+#include "turbo.h"
 
 typedef struct __attribute__((packed))
 {
@@ -165,7 +167,7 @@ unsigned char* addBank(char *fileName, int *inputSize, int *outputSize, int *del
 
 int main(int argc, char **argv)
 {
-    blocks_t *blocks = (blocks_t*) &loader_bin[loader_bin_len - (MAX_BLOCKS * sizeof(blocks_t))];
+    blocks_t *blocks = (blocks_t*) &loader_bin[loader_bin_len - 160 - (MAX_BLOCKS * sizeof(blocks_t))];
     char bankNames[MAX_BLOCKS][MAX_FILENAME] =
     { 0 };
     int loadAddress = -1;
@@ -336,14 +338,6 @@ int main(int argc, char **argv)
         }
         else if ((strcmp(argv[arg], "--fast") == 0) || (strcmp(argv[arg], "-f") == 0))
         {
-            unsigned char val[] =
-            { 0x3e, 0x00 }; // ld a, $00
-            unsigned int offset = 0;
-            // find the call to LD_BYTES
-            offset = memmem(loader_bin, loader_bin_len, val, 2);
-
-            loader_bin[offset + 1] = 0xff;
-
             wavOut = 1;
             custom = 1;
             ROMLoader = 0;
@@ -358,15 +352,25 @@ int main(int argc, char **argv)
     {
         unsigned char val[] =
         { 0x56, 0x05 };
-        unsigned int offset = 0;
         // find the call to LD_BYTES
-        offset = memmem(loader_bin, loader_bin_len, val, 2);
+        unsigned int offset = memmem(loader_bin, loader_bin_len, val, 2);
 
         *((uint16_t*) &loader_bin[offset]) = _htole16(0xc000 - 160);
+
         if (debug)
         {
             printf("LD_BYTES called at offset %d\n", offset);
         }
+
+        if (!ROMLoader)
+        {
+            memcpy(&loader_bin[loader_bin_len - 160], turbo_bin, turbo_bin_len);
+        }
+        else
+        {
+            memcpy(&loader_bin[loader_bin_len - 160], ld_bytes_bin, ld_bytes_bin_len);
+        }
+
     }
 
     if (!strlen(outputFile))
@@ -412,7 +416,7 @@ int main(int argc, char **argv)
     }
 
     // Patch the exec address
-    shortPtr = (uint16_t*) &loader_bin[loader_bin_len - (MAX_BLOCKS * sizeof(blocks_t)) - 2];
+    shortPtr = (uint16_t*) &loader_bin[loader_bin_len - 160 - (MAX_BLOCKS * sizeof(blocks_t)) - 2];
     // execAddr
     *shortPtr++ = _htole16(execAddress);
 

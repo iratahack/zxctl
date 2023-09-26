@@ -32,18 +32,10 @@ start:
         ld      (hl), 0
         ldir
 
-        ld      bc, 160
-        ; Copy turbo loader to a non-contended bank
-        ld      hl, TURBO_BYTES_START
-        ld      de, FLD_BYTES
-        ld      a, $00
-        or      a
-        jr      nz, turboLoad
-
         ; Copy LD_BYTES to a non-contended bank
+        ld      bc, 160
         ld      hl, LD_BYTES_START
         ld      de, FLD_BYTES
-turboLoad:
         ldir
 
         ; Detect 128K/48K
@@ -298,13 +290,6 @@ dzx0s_elias_backtrack:
         rl      b
         jr      dzx0s_elias_loop
 ; -----------------------------------------------------------------------------
-LD_BYTES_START:
-        binary  "ld_bytes.bin"
-LD_BYTES_END:
-TURBO_BYTES_START:
-        binary  "turbo.bin"
-TURBO_BYTES_END:
-
         ds      24, $55
 stack:
         ds      2
@@ -313,3 +298,6 @@ blocks:
         db      $ff
         ds      6
         ENDR
+        ; The below is overwritten with the tape loader
+LD_BYTES_START:
+        ds      160, $55

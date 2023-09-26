@@ -5,6 +5,8 @@
 *.bak
 *.map
 loader.h
+ld_bytes.h
+turbo.h
 loader.patch
 *.zx0
 zxctl

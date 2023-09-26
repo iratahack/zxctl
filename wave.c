@@ -319,33 +319,28 @@ int tap2wav(char *tapFileName, int ROMLoader)
 
             if (turbo)
             {
-                if (1)
+                if (previous == c)
                 {
-                    if (previous == c)
+                    if (!warping)
                     {
-                        if (!warping)
-                        {
-                            warping = TRUE;
-                            //zx_rawbit(fpout, tperiod2);
-                            zx_rawbit(fpout, tperiod1);
-                            zx_rawbit(fpout, tperiod0);
-                        }
-                        else
-                            zx_rawbit(fpout, tperiod0);
+                        warping = TRUE;
+                        //zx_rawbit(fpout, tperiod2);
+                        zx_rawbit(fpout, tperiod1);
+                        zx_rawbit(fpout, tperiod0);
                     }
                     else
-                    {
-                        if (warping)
-                        {
-                            //zx_rawbit(fpout, tperiod1);
-                            turbo_one(fpout);
-                            warping = FALSE;
-                        }
-                        turbo_rawout(fpout, c, 1);
-                    }
+                        zx_rawbit(fpout, tperiod0);
                 }
                 else
+                {
+                    if (warping)
+                    {
+                        //zx_rawbit(fpout, tperiod1);
+                        turbo_one(fpout);
+                        warping = FALSE;
+                    }
                     turbo_rawout(fpout, c, 1);
+                }
             }
             else
                 zx_rawout(fpout, c);

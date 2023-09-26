@@ -17,7 +17,7 @@ clean:
 dis: loader.bin
 	z88dk-dis -x loader.map -o start $^ | less
 
-%.o: %.c loader.h
+%.o: %.c loader.h ld_bytes.h turbo.h
 	$(CC) $(CFLAGS) $< -o $@
 
 %.o: %.cpp
@@ -26,13 +26,19 @@ dis: loader.bin
 $(PROJECT_NAME): $(OBJS)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
-loader.bin: loader.asm ld_bytes.bin turbo.bin
+%.bin: %.asm
 	z88dk-z80asm -mz80 -m -b -o$@ $<
 
 %.bin: %.asm
 	z88dk-z80asm -mz80 -m -b -o$@ $<
 
 loader.h: loader.bin
+	xxd -i $< > $@
+
+ld_bytes.h: ld_bytes.bin
+	xxd -i $< > $@
+
+turbo.h: turbo.bin
 	xxd -i $< > $@
 
 -include $(OBJS:.o=.d)
