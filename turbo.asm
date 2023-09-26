@@ -3,47 +3,13 @@
         org     $c000-160
 
 LD_BYTES:
-        ;    The A register holds +00 for a header and +FF for a block of data
-        ;    The carry flag is reset for VERIFYing and set for LOADing
-
-;000FF37:
-        ;INC D          ; This resets the zero flag (D cannot hold +FF)
-        ;EX AF,AF       ; A:  0=header, $ff=data block  CF: 1=load, 0=verify
-        ;DEC D          ; Restore D to its original value
-        ;LD   A,15              ; The border is made WHITE
-        ;OUT  (254),A
-        ;LD   HL,+053F           ; Pre-load the machine stack with the
-        ;PUSH HL                 ; return address
-
         IN      A, ($FE)                ; Make an initial read of port 254
         RRA                             ; Rotate the byte obtained
         AND     20h                     ; but keep only the EAR bit
-        ;OR 02h          ; Signal RED border
         LD      C, A                    ; Store the value in the C register
-                            ; (+22 for 'off' and +02 for 'on' - the present EAR state)
 LD_BREAK:
         CP      A                       ; Set the zero flag
-        ;RET NZ          ; Return if the BREAK key is being pressed
-
 LD_START:
-        ;CALL LD_EDGE_1  ;
-        ;JR NC,LD_BREAK  ; Return with the carry flag reset if there is no 'edge' within approx.
-                            ; 14,000 T states. But if an 'edge' is found the border will go CYAN
-
-; The next stage involves waiting a while and then showing that the signal is still pulsing.
-
-        ;LD HL,0415h     ; The length of this waiting period will
-;LD_WAIT:
-        ;DJNZ LD_WAIT    ; be almost one second in duration.
-        ;DEC HL
-        ;LD A,H
-        ;OR L
-        ;JR NZ,LD_WAIT
-        ;
-        ;CALL LD_EDGE_2  ; Continue only if two edges are found
-        ;JR NC,LD_BREAK  ; within the allowed time period
-
-
 ;   Now accept only a 'leader signal'.
 LD_LEADER:
         LD      B, 9Ch                  ; The timing constant
@@ -73,7 +39,6 @@ LD_SYNC:
         LD      A, C                    ; The border colours from now on will be
         XOR     03h                     ; BLUE & YELLOW (in ROM)
         LD      C, A
-            ;LD H,00h       ; Initialize the 'parity matching' byte to zero
         LD      B, $D0                  ; Set the timing constant for the flag byte  (was B0 in the original ROM)
         JR      LD_MARKER               ; Jump forward into the byte LOADing loop
 
@@ -82,40 +47,10 @@ LD_SYNC:
 ; first. This is followed by the data bytes and the last byte is the 'parity' byte.
 
 LD_LOOP:
-        ;EX AF,AF       ; A:  0=header, $ff=data block  CF: 1=load, 0=verify
-        ;JR NZ,LD_FLAG   ; Jump forward only when handling the first byte
-
-;;;;;;;;;   JR   NC,LD_VERIFY  ; Jump forward is VERIFYing a tape
-
         LD      (IX+00h), L
-        ;JR LD_NEXT
-
-
-; LD_FLAG is called only once when reading the first byte of the block
-;LD_FLAG:
-;           RL C            ; Keep the carry flag in a safe place temporarily
-;           XOR L           ; if the flag byte does not match the first byte on the tape...
-;           RET NZ          ; ...Return
-;           LD A,C          ; Restore the carry flag now
-;           RRA
-;           LD C,A
-;           INC DE          ; Increase the counter to compensate for
-;           JR LD_DEC       ; its decrease after the jump
-
-
-; If a data block is being verified then
-; the freshly loaded byte is tested against the original byte.
-;;
-;;05BD LD-VERIFY  LD   A,(IX+00)          Fetch the original byte
-;;                XOR  L                  Match it against the new byte
-;;                RET  NZ                 Return if 'no match' (Carry flag reset)
-
 LD_NEXT:
         INC     IX                      ; dst location
 LD_DEC:
-            ;DEC DE         ; size counter
-            ;EX AF,AF       ; Save the flags
-
         LD      B, CONSTANT             ; Set the timing constant  ($B2 in the ROM)
 LD_MARKER:
         LD      L, 01h                  ; Clear the 'object' register apart from a 'marker' bit
@@ -123,81 +58,30 @@ LD_MARKER:
 LD_8_BITS:                              ; The 'LD-8-BITS' loop is used to build up a byte in the L register.
         CALL    LD_EDGE_2               ; Find the length of the 'off' and 'on' pulses of the next bit
         RET     NC                      ; Return if the time period is exceeded (Carry flag reset)
-
-            ;LD A,E8h       ; ($CB in ROM): Compare the length against approx. 35 increments of b;
-            ;LD A,D8h       ; ($CB in ROM): Compare the length against approx. 35 increments of b;
-            ;CP B           ; if so.. zero !
         ld      a, b
-
-            ;cp $E3         ; carry set if period is shorter
-            ;cp $E5         ; carry set if period is shorter
-
-            ;cp $e0 (max limit)
-            ;cp $DC (min limit)
         cp      $de
         JP      NC, escseq
 
-            ;LD A,D5h       ; new timing
-            ;LD A,D8h       ; ($CB in ROM): Compare the length against approx. 2,400 T states (19 increments of b);
-            ;CP B           ; resetting the carry flag for a '0' and setting it for a '1'
         cp      $d5                     ; carry set if period is shorter
         ccf
         RL      L                       ; Include the new bit in the L register
-            ;LD B,D0h       ; Set the timing constant for the next bit ($B0)
         LD      B, $D0                  ; Set the timing constant for the next bit ($B0)
         JP      NC, LD_8_BITS           ; Jump back whilst there are still bits to be fetched
                             ; (GB-MAX was jumping in FFB3 to POP DE/RET ???)
 
-
-; The 'parity matching' byte has to be updated with each new byte.
-
-            ;LD A,H         ; Fetch the 'parity matching' byte and
-            ;XOR L          ; include the new byte
-            ;LD H,A         ; Save it once again
-
-
 ; Passes round the loop are made until the 'counter' reaches zero. At that point
 ; the 'parity matching' byte should be holding zero.
 nextbyte:
-            ;LD A,D         ; Make a furter pass if DE
-            ;OR E           ; does not hold zero
-            ;JR NZ,LD_LOOP
-            ;RET
         JP      LD_LOOP
-
-;                LD   A,H                Fetch the 'parity matching' byte
-;                CP   +01                Return with the carry flag set if the
-;                RET                     value is zero (Carry flag reset if in error)
-
-;escseq:
-;           dec l
-;           jp nextbyte
-
 escseq:
         dec     l
-            ;LD B,E7h       ; Set the timing constant  ($B2 in the ROM)
-            ;LD B,D2h       ; Set the timing constant  ($B2 in the ROM)
         LD      B, CONSTANT             ; Set the timing constant  ($B2 in the ROM)
         CALL    LD_EDGE_2               ; Find the length of the 'off' and 'on' pulses of the next bit
         RET     NC                      ; Return if the time period is exceeded (Carry flag reset)
-            ;LD A,E9h
-            ;LD A,EBh
-            ;LD A,EAh
-            ;LD A,D4h
-
-            ;LD A,D5h   ; min limit
-            ;LD A,D7h
-            ;LD A,DAh   ; max limit
-            ;LD A,D9h
 
         LD      A, $D7
-
-            ;LD a,b
-
         CP      B                       ; the 'long' bit stands for a whole byte set to 0
 
-            ;cp $d5         ; CF if short period
-            ;jp nc,nextbyte ; jp if longer
         jp      c, nextbyte             ; jp if longer
 
             ; ok, this is a longer period,  look for a byte repeated sequence
@@ -205,20 +89,16 @@ escseq:
         ld      l, (ix-1)               ; load the last byte value
 
 zbloop:
-            ;LD B,E7h       ; (set up timing)
         LD      B, CONSTANT             ; Set the timing constant  ($B2 in the ROM)
         CALL    LD_EDGE_2               ; Find the length of the 'off' and 'on' pulses of the next bit
         RET     NC                      ; Return if the time period is exceeded (Carry flag reset)
 
-            ;LD A,$EB
-            ;LD A,$EA
         LD      A, $D5
         CP      B
         jp      c, nextbyte             ; jp if longer
 
         ld      (ix+0), l
         inc     ix
-            ;dec de
 
         jp      zbloop
 
@@ -270,8 +150,13 @@ LD_SAMPLE:
         CPL                             ; and border colour
 
         LD      C, A                    ; (ROM) ld a,c  ... (in ROM: RED/CYAN or BLUE/YELLOW)
+
+  IF 0
         LD      A, B                    ; (ROM) cpl
         NOP                             ; (ROM) ld c,a
+  ELSE
+        LD      A, R
+  ENDIF
         AND     7                       ; Keep only the border colour
         OR      8                       ; Signal 'MIC off'
         OUT     ($FE), a                ; Change the border colour

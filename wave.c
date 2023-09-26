@@ -4,10 +4,12 @@
 #include    <stdlib.h>
 #include    <unistd.h>
 
+#define TRUE    1
+#define FALSE   0
+
 // These values are set accordingly with the turbo loader timing and should not be changed
 #define tperiod0    5
 #define tperiod1    10
-#define tperiod2    16
 
 void writeword(unsigned int i, FILE *fp)
 {
@@ -97,12 +99,14 @@ void zx_pilot(int pilot_len, FILE *fpout)
             fputc(0xe0, fpout);
     }
 
-    /* Sync */
-    for (i = 0; i < 8; i++)
+    // Sync off
+    for (i = 0; i < 9; i++)
         fputc(0x20, fpout);
 
+    // Sync on
     for (i = 0; i < 8; i++)
         fputc(0xe0, fpout);
+
 }
 
 void zx_rawbit(FILE *fpout, int period)
@@ -116,7 +120,7 @@ void zx_rawbit(FILE *fpout, int period)
         fputc(0xe0, fpout);
 }
 
-void zx_rawout(FILE *fpout, unsigned char b, char fast)
+void zx_rawout(FILE *fpout, unsigned char b)
 {
     static unsigned char c[8] =
     { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
@@ -125,19 +129,15 @@ void zx_rawout(FILE *fpout, unsigned char b, char fast)
     for (i = 0; i < 8; i++)
     {
         if (b & c[i])
+        {
             /* Experimental MIN limit is 17 */
-            if (fast)
-                period = 19;
-            else
-                period = 22;
-        //period = 22;
+            period = 22;
+        }
         else
-        /* Experimental MIN limit is 7 */
-        if (fast)
-            period = 9;
-        else
+        {
+            /* Experimental MIN limit is 7 */
             period = 11;
-        //period = 11;
+        }
         zx_rawbit(fpout, period);
     }
 }
@@ -213,7 +213,7 @@ void turbo_one(FILE *fpout)
         fputc(0xe0, fpout);
 }
 
-void turbo_rawout(FILE *fpout, unsigned char b, char extreme)
+void turbo_rawout(FILE *fpout, unsigned char b, int extreme)
 {
     static unsigned char c[8] =
     { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
@@ -230,6 +230,7 @@ void turbo_rawout(FILE *fpout, unsigned char b, char extreme)
     }
     else
     {
+
         for (i = 0; i < 8; i++)
         {
             if (b & c[i])
@@ -246,11 +247,12 @@ int tap2wav(char *tapFileName, int ROMLoader)
 {
     char wavfile[FILENAME_MAX + 1];
     FILE *fpin, *fpout;
-    int c = 0;
+    int c, previous;
     int i, blocklen;
     int len;
     int blockcount = 0;
     int turbo = 0;
+    int warping = 0;
 
     /* ***************************************** */
     /*  Now, if requested, create the audio file */
@@ -309,14 +311,46 @@ int tap2wav(char *tapFileName, int ROMLoader)
         else
             zx_pilot(2500, fpout);
 
+        previous = -1;
+
         for (i = 0; (i < blocklen); i++)
         {
             c = getc(fpin);
 
             if (turbo)
-                turbo_rawout(fpout, c, 0);
+            {
+                if (1)
+                {
+                    if (previous == c)
+                    {
+                        if (!warping)
+                        {
+                            warping = TRUE;
+                            //zx_rawbit(fpout, tperiod2);
+                            zx_rawbit(fpout, tperiod1);
+                            zx_rawbit(fpout, tperiod0);
+                        }
+                        else
+                            zx_rawbit(fpout, tperiod0);
+                    }
+                    else
+                    {
+                        if (warping)
+                        {
+                            //zx_rawbit(fpout, tperiod1);
+                            turbo_one(fpout);
+                            warping = FALSE;
+                        }
+                        turbo_rawout(fpout, c, 1);
+                    }
+                }
+                else
+                    turbo_rawout(fpout, c, 1);
+            }
             else
-                zx_rawout(fpout, c, 0);
+                zx_rawout(fpout, c);
+
+            previous = c;
         }
 
         // Drop parity byte for turbo mode
