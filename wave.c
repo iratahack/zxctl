@@ -85,27 +85,23 @@ void zx_pilot(int pilot_len, FILE *fpout)
 {
     int i, j;
 
-    /* First a short gap.. */
-    for (i = 0; i < 200; i++)
-        fputc(0x80, fpout);
-
     /* Then the beeeep */
     for (j = 0; j < pilot_len; j++)
     {
         for (i = 0; i < 27; i++)
-            fputc(0x20, fpout);
+            fputc(0xe0, fpout);
 
         for (i = 0; i < 27; i++)
-            fputc(0xe0, fpout);
+            fputc(0x20, fpout);
     }
 
     // Sync off
-    for (i = 0; i < 9; i++)
-        fputc(0x20, fpout);
-
-    // Sync on
     for (i = 0; i < 8; i++)
         fputc(0xe0, fpout);
+
+    // Sync on
+    for (i = 0; i < 9; i++)
+        fputc(0x20, fpout);
 
 }
 
@@ -114,10 +110,10 @@ void zx_rawbit(FILE *fpout, int period)
     int i;
 
     for (i = 0; i < period; i++)
-        fputc(0x20, fpout);
+        fputc(0xe0, fpout);
 
     for (i = 0; i < period; i++)
-        fputc(0xe0, fpout);
+        fputc(0x20, fpout);
 }
 
 void zx_rawout(FILE *fpout, unsigned char b)
@@ -192,7 +188,17 @@ void raw2wav(char *wavfile)
         // It should be enough for all the emulators to accept it as a valid feed
         // still permitting a good compression rate to the LZ algorithms
         c = getc(fpin);
-        fputc(c - (i & 1), fpout);
+#if 1
+        // Boost volume
+        if (c > 0x81)
+            fputc(0xff, fpout);
+        else if (c < 0x7f)
+            fputc(0x00, fpout);
+        else
+            fputc(c, fpout);  // Add some noise to the silence
+#else
+        fputc(c, fpout);
+#endif
     }
 
     fclose(fpin);
@@ -208,9 +214,9 @@ void turbo_one(FILE *fpout)
     int i;
 
     for (i = 0; i < tperiod1; i++)
-        fputc(0x20, fpout);
-    for (i = 0; i < tperiod0; i++)
         fputc(0xe0, fpout);
+    for (i = 0; i < tperiod0; i++)
+        fputc(0x20, fpout);
 }
 
 void turbo_rawout(FILE *fpout, unsigned char b, int extreme)
