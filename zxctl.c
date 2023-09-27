@@ -44,7 +44,7 @@ static char tapeName[MAX_FILENAME] = "Loader";
 void usage(void)
 {
     fprintf(stderr, "Usage:\n");
-    fprintf(stderr, "\tzxctl --load <address> --exec <address> --main <file> [options]\n");
+    fprintf(stderr, "\tzxctl --load <address> --exec <address> --main <mainbank> [options]\n");
     fprintf(stderr, "Where:\n");
     fprintf(stderr, "\t-l,--load <address>  Load address of the main bank (5,2,0), >= 0x6000\n");
     fprintf(stderr, "\t-e,--exec <address>  Exec address in main bank\n");
@@ -55,8 +55,8 @@ void usage(void)
     fprintf(stderr, "\t-s,--screen <file>   Name of the SCREEN$ (.scr) file\n");
     fprintf(stderr, "\t-t,--tape <file>     Name of the basic loader, defaults to 'Loader    '\n");
     fprintf(stderr, "\t-q,--quick           Enable quick compress mode for ZX0\n");
-    fprintf(stderr, "\t-[1,3,4,6,7] <file>  Optional 128K banks to include\n");
-    fprintf(stderr, "\t                     (Only loaded on 128K systems)\n");
+    fprintf(stderr, "\t-[0-7] <file>        Optional banks to include (1,3,4,6,7\n");
+    fprintf(stderr, "\t                     only loaded on 128K systems)\n");
     fprintf(stderr, "\t-i,--info            Display compression info\n");
     fprintf(stderr, "\t-c--custom           Enable custom loader with fancy border colors\n");
     fprintf(stderr, "\t                     Bank 0 cannot be part of <mainbank> it must be\n");
