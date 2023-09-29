@@ -363,7 +363,7 @@ int tap2wav(char *tapFileName, int ROMLoader)
         }
 
         // Trailing silence, larger time may be needed for decompression
-        for (i = 0; i < 0x4000; i++)
+        for (i = 0; i < 44100 / 2; i++)
             fputc(0x80, fpout);
 
         printf("\n");

@@ -1,35 +1,37 @@
         defc    CONSTANT=$D1
+        DEFC    EAR_INPUT=0x40
+        DEFC    MIC_OUTPUT=0x08
+
         ; $c000 - size of routine - compression delta
         org     $c000-160
 
 LD_BYTES:
         IN      A, ($FE)                ; Make an initial read of port 254
-        RRA                             ; Rotate the byte obtained
-        AND     20h                     ; but keep only the EAR bit
-        LD      C, A                    ; Store the value in the C register
+        AND     EAR_INPUT               ; Extract the EAR input and
+        LD      C, A                    ; store the value in the C register
 LD_BREAK:
-        CP      A                       ; Set the zero flag
-LD_START:
-;   Now accept only a 'leader signal'.
+        LD      H, 0                    ; Reset counter for number of leader edges
+        ;   Now accept only a 'leader signal'
 LD_LEADER:
-        LD      B, 9Ch                  ; The timing constant
+        LD      B, $9C                  ; The timeout constant
         CALL    LD_EDGE_2               ; Continue only if two edges are found
         JR      NC, LD_BREAK            ; within the allowed time period
 
-        LD      A, $C6                  ; However the edges must have been found
-        CP      B                       ; within about 3,000 T states of each other
-        JR      NC, LD_START
+        LD      A, $E8                  ; However the edges must have been found
+        CP      B                       ; within about 4000 T states of each other
+        JR      NC, LD_BREAK
+
         INC     H                       ; Count the pair of edges in the H register
         JR      NZ, LD_LEADER           ; until 256 pairs have been found
 
 
-;   After the leader come the 'off' and 'on' parts of the sync pulse.
+        ;   After the leader come the 'off' and 'on'
+        ;   parts of the sync pulse.
 LD_SYNC:
-        LD      B, $C9                  ; The timing constant
+        LD      B, $C9                  ; The timeout constant
         CALL    LD_EDGE_1               ; Every edge is considered until two edges
         JR      NC, LD_BREAK            ; are found close together -
-
-        LD      A, B                    ; these will be the start and finishing edges of the
+        LD      A, B                    ; These will be the start and finishing edges of the
         CP      $D4                     ; 'off' sync pulse
         JR      NC, LD_SYNC
 
@@ -37,9 +39,8 @@ LD_SYNC:
         RET     NC                      ; must exist (Return carry flag reset)
 
         LD      A, C                    ; The border colours from now on will be
-        XOR     03h                     ; BLUE & YELLOW (in ROM)
+        XOR     $05                     ; BLUE & YELLOW (in ROM)
         LD      C, A
-        LD      B, $D0                  ; Set the timing constant for the flag byte  (was B0 in the original ROM)
         JR      LD_MARKER               ; Jump forward into the byte LOADing loop
 
 
@@ -48,41 +49,36 @@ LD_SYNC:
 
 LD_LOOP:
         LD      (IX+00h), L
-LD_NEXT:
         INC     IX                      ; dst location
-LD_DEC:
-        LD      B, CONSTANT             ; Set the timing constant  ($B2 in the ROM)
 LD_MARKER:
+        LD      B, CONSTANT             ; Set the timing constant  ($B2 in the ROM)
         LD      L, 01h                  ; Clear the 'object' register apart from a 'marker' bit
 
 LD_8_BITS:                              ; The 'LD-8-BITS' loop is used to build up a byte in the L register.
         CALL    LD_EDGE_2               ; Find the length of the 'off' and 'on' pulses of the next bit
         RET     NC                      ; Return if the time period is exceeded (Carry flag reset)
         ld      a, b
-        cp      $de
+        cp      $e1
         JP      NC, escseq
 
-        cp      $d5                     ; carry set if period is shorter
+        cp      $d8                     ; carry set if period is shorter
         ccf
         RL      L                       ; Include the new bit in the L register
-        LD      B, $D0                  ; Set the timing constant for the next bit ($B0)
+        LD      B, CONSTANT             ; Set the timing constant for the next bit ($B0)
         JP      NC, LD_8_BITS           ; Jump back whilst there are still bits to be fetched
                             ; (GB-MAX was jumping in FFB3 to POP DE/RET ???)
-
-; Passes round the loop are made until the 'counter' reaches zero. At that point
-; the 'parity matching' byte should be holding zero.
-nextbyte:
         JP      LD_LOOP
+
 escseq:
-        dec     l
+        DEC     L                       ; L = 1 here, decrement it to get 0
         LD      B, CONSTANT             ; Set the timing constant  ($B2 in the ROM)
         CALL    LD_EDGE_2               ; Find the length of the 'off' and 'on' pulses of the next bit
         RET     NC                      ; Return if the time period is exceeded (Carry flag reset)
 
-        LD      A, $D7
+        LD      A, $D9
         CP      B                       ; the 'long' bit stands for a whole byte set to 0
 
-        jp      c, nextbyte             ; jp if longer
+        jp      c, LD_LOOP              ; jp if longer
 
             ; ok, this is a longer period,  look for a byte repeated sequence
 
@@ -93,9 +89,9 @@ zbloop:
         CALL    LD_EDGE_2               ; Find the length of the 'off' and 'on' pulses of the next bit
         RET     NC                      ; Return if the time period is exceeded (Carry flag reset)
 
-        LD      A, $D5
+        LD      A, $D9
         CP      B
-        jp      c, nextbyte             ; jp if longer
+        jp      c, LD_LOOP              ; jp if longer
 
         ld      (ix+0), l
         inc     ix
@@ -118,57 +114,50 @@ zbloop:
 
 
 LD_EDGE_2:
-        CALL    LD_EDGE_1               ; In effect call LD-EDGE-1 twice;
-        RET     NC                      ; returning in between in there is an error
+        CALL    LD_EDGE_1               ; [17] In effect call LD-EDGE-1 twice;
+        RET     NC                      ; [5/11] returning in between in there is an error
 
 LD_EDGE_1:
-        LD      A, 0Dh                  ; (was 16 in ROM) Wait 358 T states before entering the sampling loop
+        LD      A, 13                   ; [7] (was 16 in ROM) Wait 214 T states before entering the sampling loop
 LD_DELAY:
-        DEC     A
-        JR      NZ, LD_DELAY
-        AND     A
+        DEC     A                       ; [4]
+        JR      NZ, LD_DELAY            ; [7/12]
+        AND     A                       ; [4]
 
 ; The sampling loop is now entered. The value in the B register is incremented for
 ; each pass; 'time-up' is given when B reaches zero.
 
+; Each unsuccessful loop through LD_SAMPLE is 43 T-states
+
 LD_SAMPLE:
-        INC     B                       ; Count each pass
-        RET     Z                       ; Return carry reset & zero set if 'time-up'.
-        LD      A, 7Fh                  ;
-        IN      A, ($FE)                ; Read from port +7FFE
-        RRA                             ; shift the byte
-;                RET  NC                 Return carry reset & zero reset if BREAK was pressed
-        XOR     C                       ; Now test the byte against the 'last edge-type'
-        AND     20h                     ; Jump back unless it has changed
-        JR      Z, LD_SAMPLE
+        INC     B                       ; [4] Count each pass
+        RET     Z                       ; [5/11]Return carry reset & zero set if 'time-up'.
+        IN      A, ($FE)                ; [11] Read from port +7FFE
+        XOR     C                       ; [4] Now test the byte against the 'last edge-type'
+        AND     EAR_INPUT               ; [7] Jump back unless it has changed
+        JR      Z, LD_SAMPLE            ; [7/12]
 
 
 ; A new 'edge' has been found within the time period allowed for the search.
 ; So change the border colour and set the carry flag.
 
-        LD      A, C                    ; Change the 'last edge-type'
-        CPL                             ; and border colour
+        LD      A, C                    ; [4] Change the 'last edge-type'
+        CPL                             ; [4] And the border color
+        LD      C, A                    ; [4] (ROM) ld a,c  ... (in ROM: RED/CYAN or BLUE/YELLOW)
 
-        LD      C, A                    ; (ROM) ld a,c  ... (in ROM: RED/CYAN or BLUE/YELLOW)
+        AND     $07                     ; [7] Extract the border color
 
-  IF    0
-        LD      A, B                    ; (ROM) cpl
-        NOP                             ; (ROM) ld c,a
-  ELSE
-        LD      A, R
-  ENDIF
-        AND     7                       ; Keep only the border colour
-        OR      8                       ; Signal 'MIC off'
-        OUT     ($FE), a                ; Change the border colour
-        SCF                             ; Signal the successful search before returning
-        RET
+        OR      MIC_OUTPUT              ; [7] Signal 'MIC off'.
+        OUT     ($FE), a                ; [11] Change the border colour
+        SCF                             ; [4] Signal the successful search before returning
+        RET                             ; [10]
 
 
-;Note: The LD-EDGE-1 subroutine takes 464 T states, plus an additional 59 T
+;Note: The LD-EDGE-1 subroutine takes 303 T states, plus an additional 43 T
 ;states for each unsuccessful pass around the sampling loop.
-;For example, therefore, when awaiting the sync pulse (see LD-SYNC)
+;For example, when awaiting the sync pulse (see LD-SYNC)
 ;allowance is made for ten additional passes through the sampling loop.
 ;The search is thereby for the next edge to be found within, roughly, 1,100 T
-;states (464 + 10 * 59 overhead).
+;states (303 + 10 * 43 + overhead).
 ;This will prove successful for the sync 'off' pulse that comes after the long
 ;'leader pulses'.
