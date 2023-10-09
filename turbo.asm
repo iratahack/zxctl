@@ -8,6 +8,7 @@
 LD_BYTES:
         IN      A, ($FE)                ; Make an initial read of port 254
         AND     EAR_INPUT               ; Extract the EAR input and
+        OR      $05
         LD      C, A                    ; store the value in the C register
 LD_BREAK:
         LD      H, 0                    ; Reset counter for number of leader edges
@@ -39,7 +40,7 @@ LD_SYNC:
         RET     NC                      ; must exist (Return carry flag reset)
 
         LD      A, C                    ; The border colours from now on will be
-        XOR     $05                     ; BLUE & YELLOW (in ROM)
+        XOR     $01                     ; BLUE & YELLOW (in ROM)
         LD      C, A
         JR      LD_MARKER               ; Jump forward into the byte LOADing loop
 

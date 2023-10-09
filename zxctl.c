@@ -58,7 +58,7 @@ void usage(void)
     fprintf(stderr, "\t-[0-7] <file>        Optional banks to include (1,3,4,6,7\n");
     fprintf(stderr, "\t                     only loaded on 128K systems)\n");
     fprintf(stderr, "\t-i,--info            Display compression info\n");
-    fprintf(stderr, "\t-c--custom           Enable custom loader with fancy border colors\n");
+    fprintf(stderr, "\t-c,--custom          Enable custom loader with fancy border colors\n");
     fprintf(stderr, "\t                     Bank 0 cannot be part of <mainbank> it must be\n");
     fprintf(stderr, "\t                     loaded with -0 and 160 bytes of from $bf60-$c000\n");
     fprintf(stderr, "\t                     must be reserved in bank 2 for the loader\n");
