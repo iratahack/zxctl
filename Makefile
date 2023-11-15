@@ -17,7 +17,7 @@ clean:
 dis: loader.bin
 	z88dk-dis -x loader.map -o start $^ | less
 
-%.o: %.c loader.h ld_bytes.h turbo.h
+%.o: %.c loader.h ld_bytes.h turbo1.h
 	$(CC) $(CFLAGS) $< -o $@
 
 %.o: %.cpp
@@ -39,6 +39,9 @@ ld_bytes.h: ld_bytes.bin
 	xxd -i $< > $@
 
 turbo.h: turbo.bin
+	xxd -i $< > $@
+
+turbo1.h: turbo1.bin
 	xxd -i $< > $@
 
 -include $(OBJS:.o=.d)

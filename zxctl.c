@@ -6,7 +6,7 @@
 
 #include "loader.h"
 #include "ld_bytes.h"
-#include "turbo.h"
+#include "turbo1.h"
 
 typedef struct __attribute__((packed))
 {
@@ -364,7 +364,7 @@ int main(int argc, char **argv)
 
         if (!ROMLoader)
         {
-            memcpy(&loader_bin[loader_bin_len - 160], turbo_bin, turbo_bin_len);
+            memcpy(&loader_bin[loader_bin_len - 160], turbo1_bin, turbo1_bin_len);
         }
         else
         {

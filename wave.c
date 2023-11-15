@@ -4,12 +4,25 @@
 #include    <stdlib.h>
 #include    <unistd.h>
 
+#define WAV_FREQ    (44100)
+
+#define TSTATES(num)     ((WAV_FREQ*(num))/3500000)
+
 #define TRUE    1
 #define FALSE   0
 
 // These values are set accordingly with the turbo loader timing and should not be changed
-#define tperiod0    5
-#define tperiod1    10
+#define TPERIOD0    TSTATES(855)
+#define TPERIOD1    TSTATES(1710)
+#define TPILOT_P    TSTATES(2168)
+#define TEOF        TSTATES(6000)
+
+#define PERIOD0     TSTATES(855)
+#define PERIOD1     TSTATES(1710)
+#define PILOT_P     TSTATES(2168)
+
+#define SYNC_OFF_P  TSTATES(667)
+#define SYNC_ON_P   TSTATES(735)
 
 void writeword(unsigned int i, FILE *fp)
 {
@@ -81,26 +94,26 @@ void exit_log(int code, char *fmt, ...)
 }
 
 /* Pilot lenght in standard mode is about 2000 */
-void zx_pilot(int pilot_len, FILE *fpout)
+void zx_pilot(int pilot_len, int period, FILE *fpout)
 {
     int i, j;
 
     /* Then the beeeep */
     for (j = 0; j < pilot_len; j++)
     {
-        for (i = 0; i < 27; i++)
+        for (i = 0; i < period; i++)
             fputc(0xe0, fpout);
 
-        for (i = 0; i < 27; i++)
+        for (i = 0; i < period; i++)
             fputc(0x20, fpout);
     }
 
     // Sync off
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < SYNC_OFF_P; i++)
         fputc(0xe0, fpout);
 
     // Sync on
-    for (i = 0; i < 9; i++)
+    for (i = 0; i < SYNC_ON_P; i++)
         fputc(0x20, fpout);
 
 }
@@ -127,12 +140,12 @@ void zx_rawout(FILE *fpout, unsigned char b)
         if (b & c[i])
         {
             /* Experimental MIN limit is 17 */
-            period = 22;
+            period = PERIOD1;
         }
         else
         {
             /* Experimental MIN limit is 7 */
-            period = 11;
+            period = PERIOD0;
         }
         zx_rawbit(fpout, period);
     }
@@ -213,9 +226,9 @@ void turbo_one(FILE *fpout)
 {
     int i;
 
-    for (i = 0; i < tperiod1; i++)
+    for (i = 0; i < TPERIOD1; i++)
         fputc(0xe0, fpout);
-    for (i = 0; i < tperiod0; i++)
+    for (i = 0; i < TPERIOD0; i++)
         fputc(0x20, fpout);
 }
 
@@ -229,9 +242,7 @@ void turbo_rawout(FILE *fpout, unsigned char b, int extreme)
     {
         /* if byte is zero then we shortcut to a single bit ! */
         // Experimental min limit is 14
-        //zx_rawbit(fpout, tperiod2);
-        zx_rawbit(fpout, tperiod1);
-        //zx_rawbit(fpout, tperiod1);
+        zx_rawbit(fpout, TPERIOD1);
         turbo_one(fpout);
     }
     else
@@ -241,10 +252,9 @@ void turbo_rawout(FILE *fpout, unsigned char b, int extreme)
         {
             if (b & c[i])
                 // Experimental min limit is 7
-                //zx_rawbit(fpout, tperiod1);
                 turbo_one(fpout);
             else
-                zx_rawbit(fpout, tperiod0);
+                zx_rawbit(fpout, TPERIOD0);
         }
     }
 }
@@ -313,9 +323,9 @@ int tap2wav(char *tapFileName, int ROMLoader)
         }
 
         if (turbo)
-            zx_pilot(500, fpout);
+            zx_pilot(500, TPILOT_P, fpout);
         else
-            zx_pilot(2500, fpout);
+            zx_pilot(2500, PILOT_P, fpout);
 
         previous = -1;
 
@@ -325,28 +335,30 @@ int tap2wav(char *tapFileName, int ROMLoader)
 
             if (turbo)
             {
+#if 1
                 if (previous == c)
                 {
                     if (!warping)
                     {
                         warping = TRUE;
-                        //zx_rawbit(fpout, tperiod2);
-                        zx_rawbit(fpout, tperiod1);
-                        zx_rawbit(fpout, tperiod0);
+                        zx_rawbit(fpout, TPERIOD1);
+                        zx_rawbit(fpout, TPERIOD0);
                     }
                     else
-                        zx_rawbit(fpout, tperiod0);
+                        zx_rawbit(fpout, TPERIOD0);
                 }
                 else
                 {
                     if (warping)
                     {
-                        //zx_rawbit(fpout, tperiod1);
                         turbo_one(fpout);
                         warping = FALSE;
                     }
                     turbo_rawout(fpout, c, 1);
                 }
+#else
+                turbo_rawout(fpout, c, 0);
+#endif
             }
             else
                 zx_rawout(fpout, c);
@@ -357,8 +369,8 @@ int tap2wav(char *tapFileName, int ROMLoader)
         // Drop parity byte for turbo mode
         if (turbo)
         {
-            zx_rawbit(fpout, tperiod0);
-            zx_rawbit(fpout, 75);
+            zx_rawbit(fpout, TPERIOD0);
+            zx_rawbit(fpout, TEOF);
             c = getc(fpin);
         }
 
