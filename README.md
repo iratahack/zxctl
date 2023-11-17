@@ -36,7 +36,7 @@ At the time of writing, this loader had not been tested on a real cassette. If y
 
 ## Usage
 
-```
+```sh
 	zxctl --load <address> --exec <address> --main <mainbank> [options]
 Where:
 	-l,--load <address>  Load address of the main bank (5,2,0), >= 0x6000
@@ -61,6 +61,21 @@ Options:
 
 ## Examples
 
-```
+```sh
 ./zxctl -f -i -l 0x6000 -e 0x8BE2 -m ForestEscape.bin -0 ForestEscape_BANK_0.bin -4 ForestEscape_BANK_4.bin  -s loading_screen.scr -o ForestEscape_Cassette_Turbo.tap -t ForestEsc
+```
+
+## Building Sources
+
+Building the native sources is simple. However, the Z80 assembly source also need to be built. This should be done by installing z88dk. z88dk can be installed from the snap store with the commands below...
+
+```sh
+sudo snap install --edge z88dk
+
+sudo snap alias z88dk.zcc zcc
+sudo snap alias z88dk.z88dk-z80asm z88dk-z80asm
+sudo snap alias z88dk.z88dk-asmstyle z88dk-asmstyle
+sudo snap alias z88dk.z88dk-dis z88dk-dis
+sudo snap alias z88dk.z88dk-zx0 z88dk-zx0
+sudo snap alias z88dk.z88dk-appmake z88dk-appmake
 ```
