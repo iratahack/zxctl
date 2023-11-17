@@ -6,6 +6,22 @@ Utility that take as input binary images for the ZX Spectrum and output a .tap i
 
 The input binary images are compressed using the ZX0 compression algorithm by Einar Saukas. The loader uncompresses the images after each block has loaded.
 
+### Loading Screen
+
+The loading screen, if present, is loaded first. The image is compressed forward which means it is uncompressed forward, i.e. from lowest address to highest address. The loader will set the border, paper, and ink color to black and since the screen attributes come after the bitmap, the watcher (you) will not see the bitmap being uncompressed to the screen memory. Rather, as the attributes are uncompressed to the screen memory the beautiful loading screen will be revealed.
+
+### Other Blocks
+
+All blocks except the loading screen are compressed/uncompressed backward, i.e. from highest address to lowest address. This is because these blocks are uncompressed in place. They are loaded to the lower portion of their destination memory bank and uncompressed starting from the upper portion of their destination memory bank. There is a small overlap into the memory address below the bank they are being loaded to called the 'delta'. ZXCTL will report the max delta across all blocks. This number of bytes must be reserved as it will be used by the uncompressor.
+
+For example, if memory bank 0 is being loaded and the delta is 3, then 3 bytes below the loading address for memory bank 0 must be reserved, i.e. $bffd-$bfff
+
+The lowest load address of the main bank (or bank 5) matches the end of the memory used by the loader, which accounts for this delta.
+
+## Block Loading Order
+
+The loader will detect if it is running on a 128K or 48K machine and load the appropriate blocks. For this reason, the 128K specific blocks are stored after the blocks for the main bank or memory banks 5, 2, and 0. If a 48K machine is detected, only the loading screen, if present, and the main bank or memory banks 5, 2, 0 are loaded. All blocks are loaded for a 128K machine.
+
 ## Custom Tape Loader
 
 The custom and turbo loader options do not use the ROM tape loader. This means that these images will not work when loading from DivMMC devices. These loaders are specifically for loading real cassette tapes.
@@ -14,9 +30,9 @@ The custom and turbo loader options do not use the ROM tape loader. This means t
 
 The turbo load is based on the ROM loader. The timings are mostly the same, the one exception is the timing for a '1' bit is 1710T on followed by 855T off rather than 1710T/1710T. This shortens the '1' bit by 25%. The more '1's in the binary image the more time saved loading.
 
-Other differences from the ROM loader include, no flag byte at the beginning of a block and no party byte at the end.
+Other differences from the ROM loader include no flag byte at the beginning of a block and no party byte at the end.
 
-At time of writing, it has not been tested on cassette. If you get chance, please give it a try.
+At the time of writing, this loader had not been tested on a real cassette. If you get chance, please give it a try.
 
 ## Usage
 
