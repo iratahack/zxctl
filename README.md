@@ -24,9 +24,11 @@ The loader will detect if it is running on a 128K or 48K machine and load the ap
 
 ## Custom Tape Loader
 
-The custom and turbo loader options do not use the ROM tape loader. This means that these images will not work when loading from DivMMC devices. These loaders are specifically for loading real cassette tapes.
+The custom and turbo loader options do not use the ROM tape loader. This means that these images will not work when loading from DivMMC devices. These loaders are specifically for loading from real cassette tapes.
 
-## Turbo Loader
+The custom tape loader is relocated to $bf60 ($c000-$a0). $a0 bytes is enough space for the tape loader and some spare 'delta' bytes. This means you cannot overwrite this memory when bank 2 or the main bank is being loaded.
+
+### Turbo Loader
 
 The turbo load is based on the ROM loader. The timings are mostly the same, the one exception is the timing for a '1' bit is 1710T on followed by 855T off rather than 1710T/1710T. This shortens the '1' bit by 25%. The more '1's in the binary image the more time saved loading.
 
