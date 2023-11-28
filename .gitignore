@@ -12,3 +12,4 @@ loader.patch
 zxctl
 *.exe
 turbo1.h
+build
