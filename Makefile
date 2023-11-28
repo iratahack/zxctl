@@ -12,7 +12,7 @@ all: $(PROJECT_NAME)
 clean:
 	rm -f $(PROJECT_NAME)
 	rm -f *.tap *.bin *.[od]
-	rm -f loader.h *.patch *.zx0 *.map
+	rm -f loader.h ld_bytes.h turbo1.h turbo.h *.patch *.zx0 *.map
 
 dis: loader.bin
 	z88dk-dis -x loader.map -o start $^ | less
