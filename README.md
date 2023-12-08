@@ -32,8 +32,6 @@ The custom tape loader is relocated to $bf60 ($c000-$a0). $a0 bytes is enough sp
 
 The turbo load is based on the ROM loader. The timings are mostly the same, the one exception is the timing for a '1' bit is 1710T on followed by 855T off rather than 1710T/1710T. This shortens the '1' bit by 25%. The more '1's in the binary image the more time saved loading.
 
-Other differences from the ROM loader include no flag byte at the beginning of a block and no party byte at the end.
-
 At the time of writing, this loader had not been tested on a real cassette. If you get chance, please give it a try.
 
 ## Usage

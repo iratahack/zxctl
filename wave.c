@@ -313,7 +313,7 @@ int tap2wav(char *tapFileName, int ROMLoader)
             printf("- Turbo");
             turbo = 1;
         }
-
+#if 0
         // Drop the flag and update size for turbo mode
         if (turbo)
         {
@@ -325,6 +325,7 @@ int tap2wav(char *tapFileName, int ROMLoader)
         if (turbo)
             zx_pilot(500, TPILOT_P, fpout);
         else
+#endif
             zx_pilot(2500, PILOT_P, fpout);
 
         previous = -1;
@@ -335,7 +336,7 @@ int tap2wav(char *tapFileName, int ROMLoader)
 
             if (turbo)
             {
-#if 1
+#if 0
                 if (previous == c)
                 {
                     if (!warping)
@@ -367,12 +368,14 @@ int tap2wav(char *tapFileName, int ROMLoader)
         }
 
         // Drop parity byte for turbo mode
+#if 0
         if (turbo)
         {
             zx_rawbit(fpout, TPERIOD0);
             zx_rawbit(fpout, TEOF);
             c = getc(fpin);
         }
+#endif
 
         // Trailing silence, larger time may be needed for decompression
         for (i = 0; i < 44100 / 2; i++)

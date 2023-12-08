@@ -19,18 +19,35 @@
         defc    SCREEN_ATTR_END=SCREEN_ATTR_START+SCREEN_ATTR_LENGTH
         defc    BORDCR=0x5c48
 
+;
+; ROM routine addresses
+;
+ROM_CLS EQU     0x0DAF                  ; Clears the screen and opens channel 2
+ROM_OPEN_CHANNEL    EQU 0x1601          ; Open a channel
+ROM_PRINT   EQU 0x203C                  ; Print a string
+ATTR_P  EQU     0x5C8D
+;
+; PRINT control codes - work with ROM_PRINT and RST 0x10
+;
+INK     EQU     0x10
+PAPER   EQU     0x11
+FLASH   EQU     0x12
+BRIGHT  EQU     0x13
+INVERSE EQU     0x14
+OVER    EQU     0x15
+AT      EQU     0x16
+TAB     EQU     0x17
+CR      EQU     0x0C
+
         ; Start address used by bin2rem 23766
         org     0x5cd6
 start:
         di
         ld      sp, stack
 
-        ; Set screen attributes
-        ld      hl, SCREEN_ATTR_START
-        ld      de, SCREEN_ATTR_START+1
-        ld      bc, SCREEN_ATTR_LENGTH-1
-        ld      (hl), 0
-        ldir
+        xor     a
+        ld      (ATTR_P), a
+        call    ROM_CLS
 
         ; Copy LD_BYTES to a non-contended bank
         ld      bc, 160
@@ -137,12 +154,13 @@ loadBlock:
 
         ld      a, 0xff                 ; Data block
         scf                             ; Load not verify
-        ld      hl, $0000               ; Address to jump to on error
+        ld      hl, tapeError           ; Address to jump to on error
         push    hl
         ld      (ERR_SP), sp
 tapeLoader  equ $+1
         call    LD_BYTES                ; Do the load
         di
+        ret     nc
         pop     hl                      ; Error handler address
 
         ld      a, MIC_OUTPUT
@@ -289,8 +307,19 @@ dzx0s_elias_backtrack:
         rl      c
         rl      b
         jr      dzx0s_elias_loop
+
+tapeError:
+        call    ROM_CLS
+        ld      de, tapeErrorMsg
+        ld      bc, tapeErrorMsgEnd-tapeErrorMsg
+        call    ROM_PRINT
+        jr      $
+tapeErrorMsg:
+        db      AT, 11, 6, INK, 2, PAPER, 0, FLASH, 1, "Tape loading error!!"
+tapeErrorMsgEnd:
+
 ; -----------------------------------------------------------------------------
-        ds      24, $55
+        ds      32, $55
 stack:
         ds      2
 blocks:
