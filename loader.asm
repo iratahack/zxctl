@@ -42,6 +42,10 @@ CR      EQU     0x0C
         ; Start address used by bin2rem 23766
         org     0x5cd6
 start:
+		jr		start1
+		dw		blocks
+		dw		loadBlock
+start1:
         di
         ld      sp, stack
 
@@ -94,7 +98,7 @@ testBlock:
         jr      z, loadIt
         ; Prevent block from loading by setting back
         ; to -1
-        ld      (hl), -1
+        set		7, (hl)
 loadIt:
         add     hl, de
         djnz    testBlock
