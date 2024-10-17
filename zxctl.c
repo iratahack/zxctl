@@ -382,6 +382,11 @@ int main(int argc, char **argv)
     if (strlen(screenName))
     {
         outputData[0] = addBank(screenName, &inputSize, &outputSize[0], &delta, quick, 0);
+        if (inputSize > 0x1b00)
+        {
+            fprintf(stderr, "Bank '%s' size > 6912!\n", screenName);
+            exit(1);
+        }
         blocks[0].bank = 0x10;
         blocks[0].loadSize = _htole16(outputSize[0]);
         blocks[0].loadAddr = _htole16(0xc000);
@@ -393,6 +398,11 @@ int main(int argc, char **argv)
     {
         // Setup the main bank
         outputData[1] = addBank(mainBank, &inputSize, &outputSize[1], &delta, quick, 1);
+        if (inputSize > 0xa000)
+        {
+            fprintf(stderr, "Bank '%s' size > 40960!\n", mainBank);
+            exit(1);
+        }
         blocks[1].bank = 0x10;
         blocks[1].loadSize = _htole16(outputSize[1]);
         blocks[1].loadAddr = _htole16(loadAddress - delta);
@@ -406,6 +416,11 @@ int main(int argc, char **argv)
         if (strlen(bankNames[n]))
         {
             outputData[currentBlock] = addBank(bankNames[n], &inputSize, &outputSize[currentBlock], &delta, quick, 1);
+            if (inputSize > 0x4000)
+            {
+                fprintf(stderr, "Bank '%s' size > 16384!\n", bankNames[n]);
+                exit(1);
+            }
             blocks[currentBlock].bank = n | 0x10;
             blocks[currentBlock].loadSize = _htole16(outputSize[currentBlock]);
             blocks[currentBlock].loadAddr = _htole16(0xc000 - delta);
