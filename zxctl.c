@@ -80,7 +80,7 @@ static uint16_t _htole16(uint16_t value)
     return (value);
 }
 
-int memmem(unsigned char *data, int dataLen, unsigned char *subData, int subDataLen)
+int memmem_offset(unsigned char *data, int dataLen, unsigned char *subData, int subDataLen)
 {
     int match;
     for (int d = 0; d < dataLen; d++)
@@ -353,7 +353,7 @@ int main(int argc, char **argv)
         unsigned char val[] =
         { 0x56, 0x05 };
         // find the call to LD_BYTES
-        unsigned int offset = memmem(loader_bin, loader_bin_len, val, 2);
+        unsigned int offset = memmem_offset(loader_bin, loader_bin_len, val, 2);
 
         *((uint16_t*) &loader_bin[offset]) = _htole16(0xc000 - 160);
 
