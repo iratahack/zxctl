@@ -16,7 +16,7 @@ typedef struct __attribute__((packed))
     uint16_t destAddr;
 } blocks_t;
 
-#define VERSION "v0.5"
+#define VERSION "v0.6"
 #define MAX_OFFSET_ZX0 32640
 #define MAX_OFFSET_ZX7 2176
 #define MAX_INPUT 0x10000
@@ -64,6 +64,7 @@ void usage(void)
     fprintf(stderr, "\t                     must be reserved in bank 2 for the loader\n");
     fprintf(stderr, "\t-w,--wav             Convert the .tap file to a .wav file\n");
     fprintf(stderr, "\t-f,--fast            Enable turbo loader, implies -w and -c\n");
+    fprintf(stderr, "\t-v,--version <ver>   Embed version string <ver> into loader\n");
     fprintf(stderr, "\n");
 
     exit(1);
@@ -184,6 +185,7 @@ int main(int argc, char **argv)
     int wavOut = 0;
     int ROMLoader = 1;
     int custom = 0;
+    char *versionString = NULL;
 
     printf("ZX Spectrum Compressed Tape Loader (ZXCTL)\n");
     printf("Version %s, (C) 2023 IrataHack, All Rights Reserved.\n\n", VERSION);
@@ -299,6 +301,24 @@ int main(int argc, char **argv)
             {
                 fprintf(stderr, "Invalid tape name\n");
                 exit(1);
+            }
+        }
+        else if ((strcmp(argv[arg], "--version") == 0) || (strcmp(argv[arg], "-v") == 0))
+        {
+            if (++arg < argc)
+            {
+                versionString = argv[arg];
+
+                if (debug)
+                    printf("Version   : %s\n", versionString);
+
+                if ((!strlen(versionString)) || (strlen(versionString) > 31))
+                {
+                    fprintf(stderr, "Invalid version string\n");
+                    exit(1);
+                }
+
+                memcpy(&loader_bin[8], versionString, strlen(versionString));
             }
         }
         else if ((strcmp(argv[arg], "--quick") == 0) || (strcmp(argv[arg], "-q") == 0))

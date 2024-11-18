@@ -45,6 +45,9 @@ start:
 		jr		start1
 		dw		blocks
 		dw		loadBlock
+        dw      version
+version:
+        ds      32
 start1:
         di
         ld      sp, stack
