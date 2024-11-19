@@ -316,6 +316,7 @@ dzx0s_elias_backtrack:
         jr      dzx0s_elias_loop
 
 tapeError:
+        di
         call    ROM_CLS
         ld      de, tapeErrorMsg
         ld      bc, tapeErrorMsgEnd-tapeErrorMsg

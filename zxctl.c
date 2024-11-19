@@ -16,7 +16,7 @@ typedef struct __attribute__((packed))
     uint16_t destAddr;
 } blocks_t;
 
-#define VERSION "v0.6"
+#define VERSION "v0.7"
 #define MAX_OFFSET_ZX0 32640
 #define MAX_OFFSET_ZX7 2176
 #define MAX_INPUT 0x10000
